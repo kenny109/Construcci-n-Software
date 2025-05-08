@@ -85,7 +85,7 @@ def create_crud_blueprint(model, name):
 
     return bp
 
-def register_blueprints(app):
+def register_blueprint(app):
     """Registra todos los blueprints en la aplicación Flask"""
     # Importaciones dinámicas para evitar circular imports
     from .countries import bp as countries_bp
