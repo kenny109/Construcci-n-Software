@@ -132,4 +132,65 @@ def update_milestone(id):
     
     try:
         # Obtener el hito
-        milestone =
+        milestone = Milestone.query.filter_by(id=id, is_active=True).first()
+        
+        if not milestone:
+            return jsonify({'error': 'Hito no encontrado'}), 404
+        
+        # Verificar que el usuario tiene permisos en el proyecto
+        member = ProjectMember.query.filter_by(
+            project_id=milestone.project_id,
+            user_id=uuid.UUID(current_user_id),
+            is_active=True
+        ).first()
+        
+        if not member or member.role not in ['leader', 'manager']:
+            return jsonify({'error': 'No tienes permisos para actualizar hitos en este proyecto'}), 403
+        
+        # Actualizar campos
+        for key, value in data.items():
+            if hasattr(milestone, key) and key != 'id':
+                setattr(milestone, key, value)
+        
+        milestone.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Hito actualizado exitosamente',
+            'data': milestone.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/<uuid:id>', methods=['DELETE'])
+@jwt_required()
+def delete_milestone(id):
+    current_user_id = get_jwt_identity()
+    
+    try:
+        # Obtener el hito
+        milestone = Milestone.query.filter_by(id=id, is_active=True).first()
+        
+        if not milestone:
+            return jsonify({'error': 'Hito no encontrado'}), 404
+        
+        # Verificar que el usuario tiene permisos en el proyecto
+        member = ProjectMember.query.filter_by(
+            project_id=milestone.project_id,
+            user_id=uuid.UUID(current_user_id),
+            is_active=True
+        ).first()
+        
+        if not member or member.role not in ['leader', 'manager']:
+            return jsonify({'error': 'No tienes permisos para eliminar hitos en este proyecto'}), 403
+        
+        # Marcar como inactivo en lugar de eliminar
+        milestone.is_active = False
+        milestone.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({'message': 'Hito eliminado exitosamente'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
