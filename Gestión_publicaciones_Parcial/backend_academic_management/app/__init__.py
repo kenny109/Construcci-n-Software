@@ -13,7 +13,6 @@ def create_app():
     migrate.init_app(app, db)
     
     # Inicializar JWT
-    jwt = jwt
     jwt.init_app(app)
     
     # Registrar blueprints
