@@ -1,8 +1,16 @@
 import requests
 import os
+import uuid
+import logging
+from datetime import date
 from dotenv import load_dotenv
 from app.extensions import db
-from app.models import Author, Publication, PublicationAuthor, Journal, Conference
+from app.models import Author, Publication, PublicationAuthor, Journal, Conference, PublicationType
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('orcid_service')
 
 load_dotenv()
 
@@ -16,23 +24,33 @@ class OrcidService:
     def get_researcher_info(cls, orcid_id):
         """Obtiene información básica de un investigador por su ORCID ID"""
         url = f"{cls.BASE_URL}/{orcid_id}"
-        response = requests.get(url, headers=cls.HEADERS)
-        
-        if response.status_code != 200:
-            return None
+        try:
+            response = requests.get(url, headers=cls.HEADERS, timeout=10)
             
-        return response.json()
+            if response.status_code != 200:
+                logger.warning(f"Failed to get researcher info: {response.status_code}")
+                return None
+                
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting researcher info: {str(e)}")
+            return None
         
     @classmethod
     def get_researcher_works(cls, orcid_id):
         """Obtiene las publicaciones de un investigador por su ORCID ID"""
         url = f"{cls.BASE_URL}/{orcid_id}/works"
-        response = requests.get(url, headers=cls.HEADERS)
-        
-        if response.status_code != 200:
-            return []
+        try:
+            response = requests.get(url, headers=cls.HEADERS, timeout=10)
             
-        return response.json().get('group', [])
+            if response.status_code != 200:
+                logger.warning(f"Failed to get works: {response.status_code}")
+                return []
+                
+            return response.json().get('group', [])
+        except Exception as e:
+            logger.error(f"Error getting researcher works: {str(e)}")
+            return []
     
     @classmethod
     def sync_researcher_data(cls, orcid_id):
@@ -53,106 +71,155 @@ class OrcidService:
         
         if not author:
             # Creamos un nuevo autor
-            author = Author(
-                first_name=first_name,
-                last_name=last_name,
-                orcid_id=orcid_id,
-                email=cls._extract_email(person),
-                institution=cls._extract_affiliation(person)
-            )
-            db.session.add(author)
-            db.session.commit()
+            try:
+                author = Author(
+                    first_name=first_name,
+                    last_name=last_name,
+                    orcid_id=orcid_id,
+                    email=cls._extract_email(person),
+                    institution=cls._extract_affiliation(person)
+                )
+                db.session.add(author)
+                db.session.commit()
+                logger.info(f"Created new author: {first_name} {last_name} with ORCID: {orcid_id}")
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Failed to create author: {str(e)}")
+                return {"success": False, "message": f"Error al crear autor: {str(e)}"}
         
         # Obtenemos las publicaciones del investigador
         works = cls.get_researcher_works(orcid_id)
         publications_added = 0
+        publications_skipped = 0
+        publications_failed = 0
         
-        # Añadir impresión de depuración para ver cuántos trabajos se encontraron
-        print(f"Found {len(works)} work groups for ORCID ID: {orcid_id}")
+        logger.info(f"Found {len(works)} work groups for ORCID ID: {orcid_id}")
+        
+        # Primero, verificar que los tipos de publicación existan
+        article_type = PublicationType.query.filter_by(name='Artículo').first()
+        conference_type = PublicationType.query.filter_by(name='Conferencia').first()
+        
+        # Si no existen, crearlos (esto evita errores por IDs fijos)
+        if not article_type:
+            article_type = PublicationType(name='Artículo', description='Artículo en revista científica')
+            db.session.add(article_type)
+            
+        if not conference_type:
+            conference_type = PublicationType(name='Conferencia', description='Publicación en conferencia')
+            db.session.add(conference_type)
+            
+        db.session.commit()
         
         for work_group in works:
-            # Cada grupo puede tener varias versiones de la misma publicación
-            work = cls._get_preferred_work(work_group)
-            if not work:
-                print("Skipping work group - no preferred work found")
-                continue
+            try:
+                # Cada grupo puede tener varias versiones de la misma publicación
+                work = cls._get_preferred_work(work_group)
+                if not work:
+                    logger.info("Skipping work group - no preferred work found")
+                    publications_skipped += 1
+                    continue
+                    
+                # Verificamos si la publicación ya existe por identificador externo
+                pub_external_id = cls._extract_external_id(work)
+                if not pub_external_id:
+                    logger.info("Skipping work - no external ID found")
+                    publications_skipped += 1
+                    continue
                 
-            # Verificamos si la publicación ya existe
-            pub_external_id = cls._extract_external_id(work)
-            if not pub_external_id:
-                print("Skipping work - no external ID found")
-                continue
+                logger.info(f"Processing work with external ID: {pub_external_id}")
                 
-            # Añadir impresión de depuración para ver el ID externo
-            print(f"Found work with external ID: {pub_external_id}")
-            
-            # Verificar si la publicación existe por DOI primero (más confiable)
-            doi = cls._extract_doi(work)
-            existing_pub = None
-            
-            if doi:
-                existing_pub = Publication.query.filter_by(doi=doi).first()
+                # Verificar si la publicación existe por DOI primero (más confiable)
+                doi = cls._extract_doi(work)
+                existing_pub = None
                 
-            # Si no se encontró por DOI, buscar por external_id
-            if not existing_pub and pub_external_id:
-                try:
-                    existing_pub = Publication.query.filter_by(external_id=pub_external_id).first()
-                except Exception as e:
-                    print(f"Error al buscar publicación por external_id: {str(e)}")
-                    # Si hay un error (como la columna no existe), simplemente continuamos
-                    existing_pub = None
-            
-            if existing_pub:
-                # Si ya existe, solo nos aseguramos que el autor esté vinculado
-                print(f"Publication already exists with ID: {existing_pub.id}")
-                cls._ensure_author_linked(existing_pub.id, author.id)
-                continue
-            
-            # Creamos la publicación
-            publication = cls._create_publication_from_orcid(work, pub_external_id)
-            if publication:
-                # Vinculamos el autor con la publicación
-                cls._ensure_author_linked(publication.id, author.id)
-                publications_added += 1
-                print(f"Added new publication with title: {publication.title}")
-            else:
-                print(f"Failed to create publication for work: {work.get('title', {}).get('title', {}).get('value', 'Unknown')}")
+                if doi:
+                    existing_pub = Publication.query.filter_by(doi=doi).first()
+                    
+                # Si no se encontró por DOI, buscar por external_id
+                if not existing_pub and pub_external_id:
+                    try:
+                        existing_pub = Publication.query.filter_by(external_id=pub_external_id).first()
+                    except Exception as e:
+                        logger.error(f"Error al buscar publicación por external_id: {str(e)}")
+                        # Si hay un error (como la columna no existe), simplemente continuamos
+                        existing_pub = None
+                
+                if existing_pub:
+                    # Si ya existe, solo nos aseguramos que el autor esté vinculado
+                    logger.info(f"Publication already exists with ID: {existing_pub.id}")
+                    cls._ensure_author_linked(existing_pub.id, author.id)
+                    publications_skipped += 1
+                    continue
+                
+                # Creamos la publicación
+                publication = cls._create_publication_from_orcid(work, pub_external_id, article_type.id, conference_type.id)
+                if publication:
+                    # Vinculamos el autor con la publicación
+                    cls._ensure_author_linked(publication.id, author.id)
+                    publications_added += 1
+                    logger.info(f"Added new publication: {publication.title}")
+                    
+                    # Commit después de cada publicación exitosa para evitar perder todo por un error
+                    db.session.commit()
+                else:
+                    publications_failed += 1
+                    logger.error(f"Failed to create publication for work: {work.get('title', {}).get('title', {}).get('value', 'Unknown')}")
+                    
+            except Exception as e:
+                db.session.rollback()
+                publications_failed += 1
+                logger.error(f"Error processing work: {str(e)}")
         
-        db.session.commit()
         return {
             "success": True,
-            "message": f"Datos sincronizados correctamente. {publications_added} publicaciones agregadas.",
+            "message": f"Datos sincronizados correctamente. {publications_added} publicaciones agregadas, {publications_skipped} ya existentes, {publications_failed} fallidas.",
             "author": {
                 "id": str(author.id),
                 "name": f"{author.first_name} {author.last_name}",
                 "orcid_id": author.orcid_id
+            },
+            "stats": {
+                "added": publications_added,
+                "skipped": publications_skipped,
+                "failed": publications_failed
             }
         }
     
     @staticmethod
     def _extract_email(person):
         """Extrae el email de los datos de persona de ORCID"""
-        emails = person.get('emails', {}).get('email', [])
-        if emails and len(emails) > 0:
-            return emails[0].get('email', '')
+        if not person:
+            return ''
+            
+        emails = person.get('emails', {}) or {}
+        email_list = emails.get('email', []) or []
+        
+        if email_list and len(email_list) > 0:
+            email_obj = email_list[0] or {}
+            return email_obj.get('email', '')
         return ''
     
     @staticmethod
     def _extract_affiliation(person):
         """Extrae la afiliación de los datos de persona de ORCID"""
-        affiliations = person.get('employments', {}).get('employment-summary', [])
+        if not person:
+            return ''
+            
+        employments = person.get('employments', {}) or {}
+        affiliations = employments.get('employment-summary', []) or []
+        
         if affiliations and len(affiliations) > 0:
-            org = affiliations[0].get('organization', {})
+            org = affiliations[0].get('organization', {}) or {}
             return org.get('name', '')
         return ''
     
     @staticmethod
     def _get_preferred_work(work_group):
         """Obtiene la versión preferida de una publicación del grupo de trabajos"""
-        if not work_group.get('work-summary'):
+        if not work_group:
             return None
             
-        works = work_group.get('work-summary', [])
+        works = work_group.get('work-summary', []) or []
         if not works:
             return None
             
@@ -165,7 +232,8 @@ class OrcidService:
         if not work:
             return None
             
-        external_ids = work.get('external-ids', {}).get('external-id', [])
+        external_ids_obj = work.get('external-ids', {}) or {}
+        external_ids = external_ids_obj.get('external-id', []) or []
         
         # Preferimos el DOI como identificador
         for ext_id in external_ids:
@@ -185,64 +253,83 @@ class OrcidService:
             return f"orcid_work:{put_code}"
         
         # Último recurso: usar el título como identificador
-        title = work.get('title', {}).get('title', {}).get('value', '')
+        title_obj = work.get('title', {}) or {}
+        title_data = title_obj.get('title', {}) or {}
+        title = title_data.get('value', '')
+        
         if title:
             return f"title:{title}"
         
         return None
     
     @classmethod
-    def _create_publication_from_orcid(cls, work, external_id):
+    def _create_publication_from_orcid(cls, work, external_id, article_type_id, conference_type_id):
         """Crea una publicación en nuestra base de datos a partir de los datos de ORCID"""
         try:
+            if not work:
+                logger.error("Work data is None or empty")
+                return None
+                
             # Extraemos los datos básicos de la publicación
-            title = work.get('title', {}).get('title', {}).get('value', 'Sin título')
-            journal_title = ''
+            title_obj = work.get('title', {}) or {}
+            title_data = title_obj.get('title', {}) or {}
+            title = title_data.get('value') or 'Sin título'
             
             # Determinamos si es una conferencia o un journal
-            # Asegurarse de que estos IDs existan en la base de datos
-            publication_type_id = uuid.UUID('3fa85f64-5717-4562-b3fc-2c963f66afa6')  # Reemplazar con un ID válido
+            publication_type_id = article_type_id  # Por defecto, asumimos que es un artículo
             journal_id = None
             conference_id = None
             
             # Extraemos datos de la fuente (journal o conferencia)
-            source = work.get('journal-title', {}).get('value', '')
+            journal_title_obj = work.get('journal-title') or {}
+            source = journal_title_obj.get('value', '')
+            
             if source:
-                journal_title = source
-                # Buscamos si ya existe el journal
-                journal = Journal.query.filter_by(name=journal_title).first()
-                if not journal:
-                    # Creamos un nuevo journal con datos básicos
-                    # Asegurarse de que country_id exista en la base de datos
-                    country_id = uuid.UUID('3fa85f64-5717-4562-b3fc-2c963f66afa6')  # Reemplazar con un ID válido
-                    journal = Journal(
-                        name=journal_title,
-                        country_id=country_id,
-                        quartile="Q4",    # Quartil por defecto
-                        h_index=0      # H-index por defecto
-                    )
-                    db.session.add(journal)
-                    db.session.flush()
-                
-                journal_id = journal.id
+                # Es un journal
+                try:
+                    # Buscamos si ya existe el journal, si no, lo creamos
+                    journal = Journal.query.filter_by(name=source).first()
+                    if not journal:
+                        country = cls._get_default_country()
+                        journal = Journal(
+                            name=source,
+                            country_id=country.id if country else None,
+                            quartile="Q4",    # Quartil por defecto
+                            h_index=0      # H-index por defecto
+                        )
+                        db.session.add(journal)
+                        db.session.flush()
+                    
+                    journal_id = journal.id if journal else None
+                except Exception as e:
+                    logger.error(f"Error creating/finding journal: {str(e)}")
+                    journal_id = None
             else:
                 # Si no hay journal, asumimos que es una conferencia
-                publication_type_id = uuid.UUID('3fa85f64-5717-4562-b3fc-2c963f66afa7')  # Reemplazar con un ID válido
+                publication_type_id = conference_type_id
                 
-                # Buscamos si ya existe la conferencia
-                # Nota: Acá falta información para crear una conferencia completa
-                # Por ahora creamos con datos mínimos
-                # Asegurarse de que country_id exista en la base de datos
-                country_id = uuid.UUID('3fa85f64-5717-4562-b3fc-2c963f66afa6')  # Reemplazar con un ID válido
-                conference = Conference(
-                    name="Conferencia de " + title[:50],
-                    year=cls._extract_year(work) or 2023,  # Valor por defecto si no hay año
-                    country_id=country_id,
-                    description="Importado desde ORCID"
-                )
-                db.session.add(conference)
-                db.session.flush()
-                conference_id = conference.id
+                try:
+                    # Creamos una conferencia con datos mínimos
+                    country = cls._get_default_country()
+                    pub_year = cls._extract_year(work) or 2023
+                    
+                    conference_name = f"Conferencia - {title[:50]}"
+                    conference = Conference.query.filter_by(name=conference_name, year=pub_year).first()
+                    
+                    if not conference:
+                        conference = Conference(
+                            name=conference_name,
+                            year=pub_year,
+                            country_id=country.id if country else None,
+                            description="Importado desde ORCID"
+                        )
+                        db.session.add(conference)
+                        db.session.flush()
+                    
+                    conference_id = conference.id if conference else None
+                except Exception as e:
+                    logger.error(f"Error creating/finding conference: {str(e)}")
+                    conference_id = None
             
             # Extraer fecha de publicación
             year = cls._extract_year(work)
@@ -252,108 +339,145 @@ class OrcidService:
             # Construir la fecha de publicación si hay suficientes datos
             publication_date = None
             if year:
-                from datetime import date
                 try:
                     publication_date = date(year, month or 1, day or 1)
-                except ValueError:
-                    # Si hay errores en la fecha, simplemente usamos None
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Invalid date values: year={year}, month={month}, day={day}. Error: {str(e)}")
                     publication_date = None
             
-            # Creamos la publicación
-            # Comprobar qué campos existen realmente en el modelo
+            # Extracción segura de abstract
+            abstract = ''
+            if 'short-description' in work and work['short-description'] is not None:
+                abstract = work['short-description']
+            
+            # Creamos la publicación con los datos obligatorios
             publication_data = {
                 'title': title,
-                'abstract': work.get('short-description', ''),
+                'abstract': abstract,
                 'publication_type_id': publication_type_id,
-                'doi': cls._extract_doi(work),
-                'publication_date': publication_date,
             }
             
-            # Agregar campos opcionales si existen en el modelo
-            try:
-                # Usamos importación segura para uuid
-                import uuid
-                
-                # Aquí agregamos los campos que pueden o no existir en el modelo
-                # Estos son los campos que se mencionaron en el método pero que podrían no estar en el modelo
-                optional_fields = {
-                    'external_id': external_id,
-                    'url': cls._extract_url(work),
-                    'year': year,
-                    'month': month,
-                    'day': day,
-                    'journal_id': journal_id,
-                    'conference_id': conference_id
-                }
-                
-                # Solo agregamos los campos si están declarados en el modelo
-                for field, value in optional_fields.items():
-                    # Verificamos si el campo está en el modelo Publication
-                    if hasattr(Publication, field):
-                        publication_data[field] = value
+            # Agregar campos opcionales si tienen valor
+            optional_fields = {
+                'doi': cls._extract_doi(work),
+                'publication_date': publication_date,
+                'external_id': external_id,
+                'url': cls._extract_url(work),
+                'year': year,
+                'month': month if month is not None else None,
+                'day': day if day is not None else None,
+                'journal_id': journal_id,
+                'conference_id': conference_id
+            }
             
-            except Exception as e:
-                print(f"Error al agregar campos opcionales: {str(e)}")
+            # Solo agregamos los campos que tienen valor y están en el modelo
+            for field, value in optional_fields.items():
+                if value is not None and hasattr(Publication, field):
+                    publication_data[field] = value
             
             # Creamos la publicación
             publication = Publication(**publication_data)
             db.session.add(publication)
             db.session.flush()
+            
             return publication
         except Exception as e:
             db.session.rollback()
-            print(f"Error al crear publicación: {str(e)}")
+            logger.error(f"Error detallado al crear publicación: {str(e)}", exc_info=True)
             return None
     
     @staticmethod
     def _ensure_author_linked(publication_id, author_id):
         """Asegura que el autor esté vinculado a la publicación"""
-        # Verificamos si el vínculo ya existe
-        pub_author = PublicationAuthor.query.filter_by(
-            publication_id=publication_id,
-            author_id=author_id
-        ).first()
-        
-        if not pub_author:
-            # Determinar el siguiente orden de autor
-            last_order = db.session.query(db.func.max(PublicationAuthor.author_order)).filter_by(
-                publication_id=publication_id
-            ).scalar() or 0
+        if not publication_id or not author_id:
+            logger.warning("Cannot link author: missing publication_id or author_id")
+            return False
             
-            # Creamos el vínculo
-            pub_author = PublicationAuthor(
+        try:
+            # Verificamos si el vínculo ya existe
+            pub_author = PublicationAuthor.query.filter_by(
                 publication_id=publication_id,
-                author_id=author_id,
-                is_corresponding=False,  # Por defecto, no es autor correspondiente
-                author_order=last_order + 1  # Asignamos el siguiente orden
-            )
-            db.session.add(pub_author)
+                author_id=author_id
+            ).first()
+            
+            if not pub_author:
+                # Determinar el siguiente orden de autor
+                max_order = db.session.query(db.func.max(PublicationAuthor.author_order)).filter_by(
+                    publication_id=publication_id
+                ).scalar()
+                
+                next_order = 1 if max_order is None else max_order + 1
+                
+                # Creamos el vínculo
+                pub_author = PublicationAuthor(
+                    publication_id=publication_id,
+                    author_id=author_id,
+                    is_corresponding=False,  # Por defecto, no es autor correspondiente
+                    author_order=next_order  # Asignamos el siguiente orden
+                )
+                db.session.add(pub_author)
+                db.session.flush()
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error linking author to publication: {str(e)}")
+            return False
     
     @staticmethod
     def _extract_year(work):
         """Extrae el año de publicación"""
-        publication_date = work.get('publication-date', {})
-        year = publication_date.get('year', {}).get('value')
-        return int(year) if year else None
+        if not work or 'publication-date' not in work:
+            return None
+            
+        publication_date = work.get('publication-date') or {}
+        year_obj = publication_date.get('year') or {}
+        year_value = year_obj.get('value')
+        
+        if year_value and year_value.isdigit():
+            return int(year_value)
+        return None
     
     @staticmethod
     def _extract_month(work):
         """Extrae el mes de publicación"""
-        publication_date = work.get('publication-date', {})
-        month = publication_date.get('month', {}).get('value')
-        return int(month) if month else None
+        if not work or 'publication-date' not in work:
+            return None
+            
+        publication_date = work.get('publication-date') or {}
+        month_obj = publication_date.get('month') or {}
+        month_value = month_obj.get('value')
+        
+        if month_value and month_value.isdigit():
+            month_int = int(month_value)
+            if 1 <= month_int <= 12:  # Validamos que sea un mes válido
+                return month_int
+        return None
     
     @staticmethod
     def _extract_day(work):
         """Extrae el día de publicación"""
-        publication_date = work.get('publication-date', {})
-        day = publication_date.get('day', {}).get('value')
-        return int(day) if day else None
+        if not work or 'publication-date' not in work:
+            return None
+            
+        publication_date = work.get('publication-date') or {}
+        day_obj = publication_date.get('day') or {}
+        day_value = day_obj.get('value')
+        
+        if day_value and day_value.isdigit():
+            day_int = int(day_value)
+            if 1 <= day_int <= 31:  # Validación básica
+                return day_int
+        return None
     
     @staticmethod
     def _extract_doi(work):
         """Extrae el DOI de la publicación"""
-        external_ids = work.get('external-ids', {}).get('external-id', [])
+        if not work:
+            return None
+            
+        external_ids_obj = work.get('external-ids', {}) or {}
+        external_ids = external_ids_obj.get('external-id', []) or []
+        
         for ext_id in external_ids:
             if ext_id.get('external-id-type') == 'doi':
                 return ext_id.get('external-id-value', '')
@@ -362,8 +486,13 @@ class OrcidService:
     @staticmethod
     def _extract_url(work):
         """Extrae la URL de la publicación"""
+        if not work:
+            return None
+            
         # Primero buscamos URLs explícitas
-        external_ids = work.get('external-ids', {}).get('external-id', [])
+        external_ids_obj = work.get('external-ids', {}) or {}
+        external_ids = external_ids_obj.get('external-id', []) or []
+        
         for ext_id in external_ids:
             if ext_id.get('external-id-type') == 'url':
                 return ext_id.get('external-id-value', '')
@@ -374,3 +503,25 @@ class OrcidService:
             return f"https://doi.org/{doi}"
         
         return None
+    
+    @staticmethod
+    def _get_default_country():
+        """Obtiene un país por defecto para journals/conferencias"""
+        from app.models import Country
+        # Intentamos obtener un país existente
+        country = Country.query.first()
+        
+        # Si no hay países, creamos uno por defecto
+        if not country:
+            try:
+                country = Country(
+                    name="Sin especificar",
+                    code="ZZ"
+                )
+                db.session.add(country)
+                db.session.flush()
+            except Exception as e:
+                logger.error(f"Error creating default country: {str(e)}")
+                return None
+                
+        return country
