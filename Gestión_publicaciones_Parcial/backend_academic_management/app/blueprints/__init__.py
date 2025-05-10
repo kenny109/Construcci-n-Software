@@ -23,6 +23,7 @@ def register_blueprints(app):
     from .projects import bp as projects_bp
     from .publication_authors import bp as publication_authors_bp
     from .orcid import bp as orcid_bp
+    from .auth import bp as auth_bp
 
     # Lista de todos los blueprints
     all_blueprints = [
@@ -43,7 +44,8 @@ def register_blueprints(app):
         (publications_bp, '/api/publications'),
         (projects_bp, '/api/projects'),
         (publication_authors_bp, '/api/publication-authors'),
-        (orcid_bp, '/api/orcid')
+        (orcid_bp, '/api/orcid'),
+        (auth_bp, '/api/auth')
     ]
 
     # Registrar cada blueprint
