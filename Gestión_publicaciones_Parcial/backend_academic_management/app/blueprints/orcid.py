@@ -32,7 +32,6 @@ def get_researcher(orcid_id):
             'message': 'No se pudo obtener información del investigador'
         }), 404
     
-    # Extraemos solo los datos relevantes
     person = researcher_info.get('person', {})
     name = person.get('name', {})
     
@@ -62,18 +61,22 @@ def get_works(orcid_id):
             'message': 'No se pudieron obtener las publicaciones del investigador'
         }), 404
     
-    # Procesamos para devolver datos simplificados
     simplified_works = []
-    
+
     for work_group in works:
         work = OrcidService._get_preferred_work(work_group)
         if work:
             external_id = OrcidService._extract_external_id(work)
+
+            # Asegurarse de que journal-title no sea None
+            journal_info = work.get('journal-title')
+            journal = journal_info.get('value', '') if journal_info else ''
+
             simplified_works.append({
                 'title': work.get('title', {}).get('title', {}).get('value', 'Sin título'),
                 'type': work.get('type'),
                 'year': OrcidService._extract_year(work),
-                'journal': work.get('journal-title', {}).get('value', ''),
+                'journal': journal,
                 'external_id': external_id,
                 'doi': OrcidService._extract_doi(work),
                 'url': OrcidService._extract_url(work)

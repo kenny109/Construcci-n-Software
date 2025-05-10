@@ -122,51 +122,58 @@ def delete_author(id):
 @jwt_required()
 def fetch_from_orcid():
     data = request.get_json()
-    
-    if not data.get('orcid_id'):
+
+    if not data or not data.get('orcid_id'):
         return jsonify({'error': 'Se requiere el ORCID ID'}), 400
-    
+
     orcid_id = data['orcid_id']
-    
+
     try:
-        # Llamada a la API pública de ORCID
         headers = {
             'Accept': 'application/json'
         }
-        
+
         # Obtener datos del perfil
         response = requests.get(
             f'https://pub.orcid.org/v3.0/{orcid_id}/person',
             headers=headers
         )
-        
+
         if response.status_code != 200:
             return jsonify({'error': f'Error al obtener datos de ORCID: {response.text}'}), 400
-        
-        profile_data = response.json()
-        
+
+        profile_data = response.json() or {}
+
         # Obtener datos de las publicaciones
         works_response = requests.get(
             f'https://pub.orcid.org/v3.0/{orcid_id}/works',
             headers=headers
         )
-        
+
         if works_response.status_code != 200:
             return jsonify({'error': f'Error al obtener publicaciones de ORCID: {works_response.text}'}), 400
-        
-        works_data = works_response.json()
-        
-        # Extraer información relevante del perfil
-        first_name = profile_data.get('name', {}).get('given-names', {}).get('value', '')
-        last_name = profile_data.get('name', {}).get('family-name', {}).get('value', '')
-        emails = profile_data.get('emails', {}).get('email', [])
-        email = emails[0].get('email') if emails else None
-        
+
+        works_data = works_response.json() or {}
+
+        # Extraer nombre
+        name_data = profile_data.get('name') or {}
+        given_names = name_data.get('given-names') or {}
+        family_name = name_data.get('family-name') or {}
+
+        first_name = given_names.get('value', '')
+        last_name = family_name.get('value', '')
+
+        # Extraer email
+        emails_data = profile_data.get('emails') or {}
+        email_list = emails_data.get('email') or []
+        email = None
+        if isinstance(email_list, list) and len(email_list) > 0:
+            email = email_list[0].get('email')
+
         # Verificar si el autor ya existe
         existing_author = Author.query.filter_by(orcid_id=orcid_id).first()
-        
+
         if existing_author:
-            # Actualizar datos del autor existente
             author = Author.update(
                 existing_author.id,
                 first_name=first_name,
@@ -174,54 +181,64 @@ def fetch_from_orcid():
                 email=email
             )
         else:
-            # Crear nuevo autor
             author = Author.create(
                 first_name=first_name,
                 last_name=last_name,
                 email=email,
                 orcid_id=orcid_id
             )
-        
-        # Procesar publicaciones (works)
+
+        # Procesar publicaciones
         publications_summary = []
-        
-        for work in works_data.get('group', []):
-            # Obtener el primer work-summary (normalmente el más completo)
-            if work.get('work-summary'):
-                summary = work['work-summary'][0]
-                pub_data = {
-                    'title': summary.get('title', {}).get('title', {}).get('value', 'Sin título'),
-                    'type': summary.get('type', ''),
-                    'publication_date': None,
-                    'journal': None,
-                    'doi': None
-                }
-                
-                # Extraer fecha
-                if summary.get('publication-date'):
-                    year = summary['publication-date'].get('year', {}).get('value')
-                    month = summary['publication-date'].get('month', {}).get('value', '01')
-                    day = summary['publication-date'].get('day', {}).get('value', '01')
-                    if year:
-                        pub_data['publication_date'] = f"{year}-{month}-{day}"
-                
-                # Extraer DOI si está disponible
-                if summary.get('external-ids', {}).get('external-id'):
-                    for ext_id in summary['external-ids']['external-id']:
-                        if ext_id.get('external-id-type') == 'doi':
-                            pub_data['doi'] = ext_id.get('external-id-value')
-                
-                # Extraer fuente (journal)
-                if summary.get('journal-title'):
-                    pub_data['journal'] = summary['journal-title'].get('value')
-                
-                publications_summary.append(pub_data)
-        
+
+        for group in works_data.get('group', []):
+            work_summaries = group.get('work-summary') or []
+            if not work_summaries:
+                continue
+
+            summary = work_summaries[0] or {}
+
+            title_data = summary.get('title') or {}
+            inner_title = title_data.get('title') or {}
+            title = inner_title.get('value', 'Sin título')
+
+            pub_data = {
+                'title': title,
+                'type': summary.get('type', ''),
+                'publication_date': None,
+                'journal': None,
+                'doi': None
+            }
+
+            # Fecha
+            pub_date = summary.get('publication-date') or {}
+            year = (pub_date.get('year') or {}).get('value')
+            month = (pub_date.get('month') or {}).get('value', '01')
+            day = (pub_date.get('day') or {}).get('value', '01')
+
+            if year:
+                pub_data['publication_date'] = f"{year}-{month}-{day}"
+
+            # DOI
+            external_ids = summary.get('external-ids') or {}
+            ext_id_list = external_ids.get('external-id') or []
+            for ext_id in ext_id_list:
+                if ext_id.get('external-id-type') == 'doi':
+                    pub_data['doi'] = ext_id.get('external-id-value')
+
+            # Journal
+            journal_data = summary.get('journal-title') or {}
+            pub_data['journal'] = journal_data.get('value')
+
+            publications_summary.append(pub_data)
+
         return jsonify({
             'message': 'Datos obtenidos exitosamente de ORCID',
             'author': author.to_dict(),
             'publications': publications_summary
         })
-        
+
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Para depuración en consola
         return jsonify({'error': f'Error al procesar datos de ORCID: {str(e)}'}), 500

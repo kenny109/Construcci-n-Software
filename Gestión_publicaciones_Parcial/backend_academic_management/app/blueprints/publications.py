@@ -18,7 +18,7 @@ def create_publication():
             return jsonify({'error': f'Campo {field} es obligatorio'}), 400
     
     try:
-        # Crear la publicación
+        # Crear la publicación, incluyendo el campo external_id si se proporciona
         publication = Publication.create(**{
             k: v for k, v in data.items() 
             if k not in ['authors', 'keywords']

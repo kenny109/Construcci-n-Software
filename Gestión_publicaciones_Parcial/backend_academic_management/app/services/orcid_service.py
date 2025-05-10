@@ -58,7 +58,7 @@ class OrcidService:
                 last_name=last_name,
                 orcid_id=orcid_id,
                 email=cls._extract_email(person),
-                affiliation=cls._extract_affiliation(person)
+                institution=cls._extract_affiliation(person)
             )
             db.session.add(author)
             db.session.commit()
@@ -67,20 +67,44 @@ class OrcidService:
         works = cls.get_researcher_works(orcid_id)
         publications_added = 0
         
+        # Añadir impresión de depuración para ver cuántos trabajos se encontraron
+        print(f"Found {len(works)} work groups for ORCID ID: {orcid_id}")
+        
         for work_group in works:
             # Cada grupo puede tener varias versiones de la misma publicación
             work = cls._get_preferred_work(work_group)
             if not work:
+                print("Skipping work group - no preferred work found")
                 continue
                 
             # Verificamos si la publicación ya existe
             pub_external_id = cls._extract_external_id(work)
             if not pub_external_id:
+                print("Skipping work - no external ID found")
                 continue
                 
-            existing_pub = Publication.query.filter_by(external_id=pub_external_id).first()
+            # Añadir impresión de depuración para ver el ID externo
+            print(f"Found work with external ID: {pub_external_id}")
+            
+            # Verificar si la publicación existe por DOI primero (más confiable)
+            doi = cls._extract_doi(work)
+            existing_pub = None
+            
+            if doi:
+                existing_pub = Publication.query.filter_by(doi=doi).first()
+                
+            # Si no se encontró por DOI, buscar por external_id
+            if not existing_pub and pub_external_id:
+                try:
+                    existing_pub = Publication.query.filter_by(external_id=pub_external_id).first()
+                except Exception as e:
+                    print(f"Error al buscar publicación por external_id: {str(e)}")
+                    # Si hay un error (como la columna no existe), simplemente continuamos
+                    existing_pub = None
+            
             if existing_pub:
                 # Si ya existe, solo nos aseguramos que el autor esté vinculado
+                print(f"Publication already exists with ID: {existing_pub.id}")
                 cls._ensure_author_linked(existing_pub.id, author.id)
                 continue
             
@@ -90,13 +114,16 @@ class OrcidService:
                 # Vinculamos el autor con la publicación
                 cls._ensure_author_linked(publication.id, author.id)
                 publications_added += 1
+                print(f"Added new publication with title: {publication.title}")
+            else:
+                print(f"Failed to create publication for work: {work.get('title', {}).get('title', {}).get('value', 'Unknown')}")
         
         db.session.commit()
         return {
             "success": True,
             "message": f"Datos sincronizados correctamente. {publications_added} publicaciones agregadas.",
             "author": {
-                "id": author.id,
+                "id": str(author.id),
                 "name": f"{author.first_name} {author.last_name}",
                 "orcid_id": author.orcid_id
             }
@@ -153,7 +180,16 @@ class OrcidService:
                 return f"{id_type}:{id_value}"
         
         # Si no hay identificadores, usamos el put-code de ORCID
-        return f"orcid_work:{work.get('put-code', '')}"
+        put_code = work.get('put-code', '')
+        if put_code:
+            return f"orcid_work:{put_code}"
+        
+        # Último recurso: usar el título como identificador
+        title = work.get('title', {}).get('title', {}).get('value', '')
+        if title:
+            return f"title:{title}"
+        
+        return None
     
     @classmethod
     def _create_publication_from_orcid(cls, work, external_id):
@@ -164,7 +200,8 @@ class OrcidService:
             journal_title = ''
             
             # Determinamos si es una conferencia o un journal
-            publication_type_id = 1  # Por defecto, asumimos artículo de journal
+            # Asegurarse de que estos IDs existan en la base de datos
+            publication_type_id = uuid.UUID('3fa85f64-5717-4562-b3fc-2c963f66afa6')  # Reemplazar con un ID válido
             journal_id = None
             conference_id = None
             
@@ -176,10 +213,12 @@ class OrcidService:
                 journal = Journal.query.filter_by(name=journal_title).first()
                 if not journal:
                     # Creamos un nuevo journal con datos básicos
+                    # Asegurarse de que country_id exista en la base de datos
+                    country_id = uuid.UUID('3fa85f64-5717-4562-b3fc-2c963f66afa6')  # Reemplazar con un ID válido
                     journal = Journal(
                         name=journal_title,
-                        country_id=1,  # País por defecto
-                        quartile=4,    # Quartil por defecto
+                        country_id=country_id,
+                        quartile="Q4",    # Quartil por defecto
                         h_index=0      # H-index por defecto
                     )
                     db.session.add(journal)
@@ -188,36 +227,76 @@ class OrcidService:
                 journal_id = journal.id
             else:
                 # Si no hay journal, asumimos que es una conferencia
-                publication_type_id = 2  # Conferencia
+                publication_type_id = uuid.UUID('3fa85f64-5717-4562-b3fc-2c963f66afa7')  # Reemplazar con un ID válido
                 
                 # Buscamos si ya existe la conferencia
                 # Nota: Acá falta información para crear una conferencia completa
                 # Por ahora creamos con datos mínimos
+                # Asegurarse de que country_id exista en la base de datos
+                country_id = uuid.UUID('3fa85f64-5717-4562-b3fc-2c963f66afa6')  # Reemplazar con un ID válido
                 conference = Conference(
                     name="Conferencia de " + title[:50],
-                    year=cls._extract_year(work),
-                    country_id=1,  # País por defecto
+                    year=cls._extract_year(work) or 2023,  # Valor por defecto si no hay año
+                    country_id=country_id,
                     description="Importado desde ORCID"
                 )
                 db.session.add(conference)
                 db.session.flush()
                 conference_id = conference.id
             
-            # Creamos la publicación
-            publication = Publication(
-                title=title,
-                abstract=work.get('short-description', ''),
-                year=cls._extract_year(work),
-                month=cls._extract_month(work),
-                day=cls._extract_day(work),
-                publication_type_id=publication_type_id,
-                journal_id=journal_id,
-                conference_id=conference_id,
-                external_id=external_id,
-                doi=cls._extract_doi(work),
-                url=cls._extract_url(work)
-            )
+            # Extraer fecha de publicación
+            year = cls._extract_year(work)
+            month = cls._extract_month(work)
+            day = cls._extract_day(work)
             
+            # Construir la fecha de publicación si hay suficientes datos
+            publication_date = None
+            if year:
+                from datetime import date
+                try:
+                    publication_date = date(year, month or 1, day or 1)
+                except ValueError:
+                    # Si hay errores en la fecha, simplemente usamos None
+                    publication_date = None
+            
+            # Creamos la publicación
+            # Comprobar qué campos existen realmente en el modelo
+            publication_data = {
+                'title': title,
+                'abstract': work.get('short-description', ''),
+                'publication_type_id': publication_type_id,
+                'doi': cls._extract_doi(work),
+                'publication_date': publication_date,
+            }
+            
+            # Agregar campos opcionales si existen en el modelo
+            try:
+                # Usamos importación segura para uuid
+                import uuid
+                
+                # Aquí agregamos los campos que pueden o no existir en el modelo
+                # Estos son los campos que se mencionaron en el método pero que podrían no estar en el modelo
+                optional_fields = {
+                    'external_id': external_id,
+                    'url': cls._extract_url(work),
+                    'year': year,
+                    'month': month,
+                    'day': day,
+                    'journal_id': journal_id,
+                    'conference_id': conference_id
+                }
+                
+                # Solo agregamos los campos si están declarados en el modelo
+                for field, value in optional_fields.items():
+                    # Verificamos si el campo está en el modelo Publication
+                    if hasattr(Publication, field):
+                        publication_data[field] = value
+            
+            except Exception as e:
+                print(f"Error al agregar campos opcionales: {str(e)}")
+            
+            # Creamos la publicación
+            publication = Publication(**publication_data)
             db.session.add(publication)
             db.session.flush()
             return publication
@@ -236,11 +315,17 @@ class OrcidService:
         ).first()
         
         if not pub_author:
+            # Determinar el siguiente orden de autor
+            last_order = db.session.query(db.func.max(PublicationAuthor.author_order)).filter_by(
+                publication_id=publication_id
+            ).scalar() or 0
+            
             # Creamos el vínculo
             pub_author = PublicationAuthor(
                 publication_id=publication_id,
                 author_id=author_id,
-                is_corresponding=False  # Por defecto, no es autor correspondiente
+                is_corresponding=False,  # Por defecto, no es autor correspondiente
+                author_order=last_order + 1  # Asignamos el siguiente orden
             )
             db.session.add(pub_author)
     
@@ -277,8 +362,15 @@ class OrcidService:
     @staticmethod
     def _extract_url(work):
         """Extrae la URL de la publicación"""
+        # Primero buscamos URLs explícitas
         external_ids = work.get('external-ids', {}).get('external-id', [])
         for ext_id in external_ids:
             if ext_id.get('external-id-type') == 'url':
                 return ext_id.get('external-id-value', '')
+        
+        # Si no hay URL explícita, intentamos construir una a partir del DOI
+        doi = OrcidService._extract_doi(work)
+        if doi:
+            return f"https://doi.org/{doi}"
+        
         return None

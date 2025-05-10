@@ -167,20 +167,29 @@ class Keyword(BaseMixin, db.Model):
     publication_keywords = db.relationship('PublicationKeyword', backref='keyword', lazy=True, cascade='all, delete-orphan')
 
 
-# 9. Modelo de publicaci�n
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
+
+# 9. Modelo de publicación
 class Publication(BaseMixin, db.Model):
     __tablename__ = 'publications'
     
     title = db.Column(db.String(255), nullable=False)
     abstract = db.Column(db.Text)
     doi = db.Column(db.String(100), unique=True)
+    external_id = db.Column(db.Text, unique=True)  # Añadir este campo como texto
     publication_date = db.Column(db.Date)
     pdf_url = db.Column(db.String(255))
+    url = db.Column(db.String(255))  # También agregar este campo que es usado en _create_publication_from_orcid
+    year = db.Column(db.Integer)  # Agregar estos campos que son utilizados en el servicio
+    month = db.Column(db.Integer)
+    day = db.Column(db.Integer)
     publication_type_id = db.Column(UUID(as_uuid=True), db.ForeignKey('publication_types.id'), nullable=False)
     journal_id = db.Column(UUID(as_uuid=True), db.ForeignKey('journals.id'))
     conference_id = db.Column(UUID(as_uuid=True), db.ForeignKey('conferences.id'))
     citation_count = db.Column(db.Integer, default=0)
     project_id = db.Column(UUID(as_uuid=True), db.ForeignKey('projects.id'))
+    
     
     # Relaciones
     authors = db.relationship('PublicationAuthor', backref='publication', lazy=True, cascade='all, delete-orphan')
@@ -199,6 +208,7 @@ class Publication(BaseMixin, db.Model):
         foreign_keys='PublicationReference.citing_publication_id',
         cascade='all, delete-orphan'
     )
+
 
 
 # 10. Modelo de relaci�n publicaci�n-autor
