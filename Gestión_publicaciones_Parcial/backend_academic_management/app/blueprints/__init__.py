@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 from app.extensions import db
 
-def register_blueprint(app):
+def register_blueprints(app):
     """Registra todos los blueprints en la aplicación Flask"""
     # Importaciones dinámicas para evitar circular imports
     from .countries import bp as countries_bp
@@ -22,6 +22,7 @@ def register_blueprint(app):
     from .publications import bp as publications_bp
     from .projects import bp as projects_bp
     from .publication_authors import bp as publication_authors_bp
+    from .orcid import bp as orcid_bp
 
     # Lista de todos los blueprints
     all_blueprints = [
@@ -41,7 +42,8 @@ def register_blueprint(app):
         (authors_bp, '/api/authors'),
         (publications_bp, '/api/publications'),
         (projects_bp, '/api/projects'),
-        (publication_authors_bp, '/api/publication-authors')
+        (publication_authors_bp, '/api/publication-authors'),
+        (orcid_bp, '/api/orcid')
     ]
 
     # Registrar cada blueprint
