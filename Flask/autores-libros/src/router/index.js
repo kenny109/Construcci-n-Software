@@ -5,7 +5,9 @@ import Register from '@/components/Register'
 import AutorList from '@/components/AutorList'
 import LibroList from '@/components/LibroList'
 import GeneroList from '@/components/GeneroList'
-
+import GeneroForm from '@/components/GeneroForm.vue'
+import LibroForm from '@/components/LibroForm.vue'
+import AutorForm from '@/components/AutorForm.vue'
 Vue.use(Router)
 
 const router = new Router({

@@ -7,7 +7,7 @@
       </div>
       
       <div style="margin-bottom: 20px;">
-        <button @click="showModal = true" class="btn btn-primary">
+        <button @click="openNewAutorModal" class="btn btn-primary">
           ➕ Nuevo Autor
         </button>
       </div>
@@ -67,91 +67,31 @@
       </div>
     </div>
     
-    <!-- Modal para crear/editar autor -->
-    <div v-if="showModal" class="modal-overlay">
-      <div class="modal">
-        <div class="modal-header">
-          <h3 class="modal-title">
-            {{ isEditing ? 'Editar Autor' : 'Nuevo Autor' }}
-          </h3>
-          <button @click="closeModal" class="modal-close">&times;</button>
-        </div>
-        
-        <form @submit.prevent="saveAutor">
-          <div class="form-group">
-            <label class="form-label">Nombre *</label>
-            <input 
-              v-model="currentAutor.nombre"
-              type="text" 
-              class="form-input"
-              placeholder="Ingresa el nombre"
-              required
-            >
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Apellido *</label>
-            <input 
-              v-model="currentAutor.apellido"
-              type="text" 
-              class="form-input"
-              placeholder="Ingresa el apellido"
-              required
-            >
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Nacionalidad</label>
-            <input 
-              v-model="currentAutor.nacionalidad"
-              type="text" 
-              class="form-input"
-              placeholder="Ingresa la nacionalidad"
-            >
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Fecha de Nacimiento</label>
-            <input 
-              v-model="currentAutor.fecha_nacimiento"
-              type="date" 
-              class="form-input"
-            >
-          </div>
-          
-          <div class="modal-footer">
-            <button type="button" @click="closeModal" class="btn btn-secondary">
-              Cancelar
-            </button>
-            <button type="submit" class="btn btn-primary" :disabled="loadingAction">
-              {{ loadingAction ? 'Guardando...' : 'Guardar' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Componente de formulario para crear/editar autor -->
+    <AutorForm
+      v-if="showModal"
+      :autor="selectedAutor"
+      @close="closeModal"
+      @saved="onAutorSaved"
+    />
   </div>
 </template>
 
 <script>
 import api from '@/services/api'
+import AutorForm from './AutorForm.vue'
 
 export default {
   name: 'AutorList',
+  components: {
+    AutorForm
+  },
   data() {
     return {
       autores: [],
       showModal: false,
-      isEditing: false,
-      currentAutor: {
-        autor_id: null,
-        nombre: '',
-        apellido: '',
-        nacionalidad: '',
-        fecha_nacimiento: ''
-      },
+      selectedAutor: null, // null para nuevo autor, objeto para editar
       loading: false,
-      loadingAction: false,
       error: '',
       success: ''
     }
@@ -169,15 +109,19 @@ export default {
         this.autores = response.data || []
       } catch (error) {
         console.error('Error cargando autores:', error)
-        this.error = 'Error al cargar los autores'
+        this.error = 'Error al cargar los autores. Verifica la conexión con el servidor.'
       } finally {
         this.loading = false
       }
     },
     
+    openNewAutorModal() {
+      this.selectedAutor = null
+      this.showModal = true
+    },
+    
     editAutor(autor) {
-      this.isEditing = true
-      this.currentAutor = { ...autor }
+      this.selectedAutor = { ...autor }
       this.showModal = true
     },
     
@@ -188,70 +132,64 @@ export default {
       
       try {
         await api.deleteAutor(autor.autor_id)
-        this.success = 'Autor eliminado con éxito'
+        this.showSuccessMessage('Autor eliminado con éxito')
         await this.loadAutores()
-        this.clearMessages()
       } catch (error) {
         console.error('Error eliminando autor:', error)
-        this.error = 'Error al eliminar el autor'
-        this.clearMessages()
-      }
-    },
-    
-    async saveAutor() {
-      if (!this.currentAutor.nombre.trim() || !this.currentAutor.apellido.trim()) {
-        this.error = 'El nombre y apellido son requeridos'
-        this.clearMessages()
-        return
-      }
-      
-      this.loadingAction = true
-      this.error = ''
-      
-      try {
-        if (this.isEditing) {
-          await api.updateAutor(this.currentAutor)
-          this.success = 'Autor actualizado con éxito'
-        } else {
-          await api.createAutor(this.currentAutor)
-          this.success = 'Autor creado con éxito'
-        }
         
-        this.closeModal()
-        await this.loadAutores()
-        this.clearMessages()
-      } catch (error) {
-        console.error('Error guardando autor:', error)
-        this.error = error.response?.data?.error || 'Error al guardar el autor'
-        this.clearMessages()
-      } finally {
-        this.loadingAction = false
+        // Manejo específico de errores
+        if (error.response && error.response.status === 400) {
+          this.showErrorMessage('No se puede eliminar el autor porque tiene libros asociados')
+        } else if (error.response && error.response.status === 404) {
+          this.showErrorMessage('El autor no existe')
+        } else {
+          this.showErrorMessage('Error al eliminar el autor')
+        }
       }
     },
     
     closeModal() {
       this.showModal = false
-      this.isEditing = false
-      this.currentAutor = {
-        autor_id: null,
-        nombre: '',
-        apellido: '',
-        nacionalidad: '',
-        fecha_nacimiento: ''
-      }
+      this.selectedAutor = null
+    },
+    
+    async onAutorSaved() {
+      const message = this.selectedAutor ? 'Autor actualizado con éxito' : 'Autor creado con éxito'
+      this.showSuccessMessage(message)
+      await this.loadAutores()
     },
     
     formatDate(dateString) {
       if (!dateString) return 'No especificada'
-      const date = new Date(dateString)
-      return date.toLocaleDateString('es-ES')
+      try {
+        const date = new Date(dateString)
+        return date.toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+      } catch (error) {
+        return 'Fecha inválida'
+      }
+    },
+    
+    showSuccessMessage(message) {
+      this.success = message
+      this.error = ''
+      this.clearMessages()
+    },
+    
+    showErrorMessage(message) {
+      this.error = message
+      this.success = ''
+      this.clearMessages()
     },
     
     clearMessages() {
       setTimeout(() => {
         this.error = ''
         this.success = ''
-      }, 3000)
+      }, 5000)
     }
   }
 }

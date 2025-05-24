@@ -129,8 +129,9 @@ export default {
         }
       } catch (error) {
         console.error('Error registro:', error)
-        this.error = error.response?.data?.error || error.response?.data?.message || 'Error al registrar usuario'
-      } finally {
+this.error = (error.response && error.response.data && error.response.data.error) || 
+             (error.response && error.response.data && error.response.data.message) || 
+             'Error al registrar usuario'      } finally {
         this.loading = false
       }
     }

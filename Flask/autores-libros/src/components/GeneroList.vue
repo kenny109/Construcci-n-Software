@@ -179,7 +179,7 @@ export default {
         this.closeModal()
       } catch (error) {
         console.error('Error al guardar género:', error)
-        this.modalError = error.response?.data?.error || 'Error al guardar el género'
+        this.modalError = (error.response && error.response.data && error.response.data.error) || 'Error al guardar el género'
       } finally {
         this.modalLoading = false
       }
@@ -195,7 +195,7 @@ export default {
         await this.loadGeneros()
       } catch (error) {
         console.error('Error al eliminar género:', error)
-        this.error = error.response?.data?.error || 'Error al eliminar el género'
+        this.error = (error.response && error.response.data && error.response.data.error) || 'Error al eliminar el género'
       }
     },
 

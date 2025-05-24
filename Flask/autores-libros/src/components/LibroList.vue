@@ -7,7 +7,7 @@
       </div>
       
       <div style="margin-bottom: 20px;">
-        <button @click="showModal = true" class="btn btn-primary">
+        <button @click="openNewLibroModal" class="btn btn-primary">
           ➕ Nuevo Libro
         </button>
       </div>
@@ -27,6 +27,11 @@
       
       <div v-else-if="libros.length === 0" class="loading">
         <p>No hay libros registrados</p>
+        <p v-if="!hasAutoresOrGeneros" style="margin-top: 10px; color: #666;">
+          Para crear libros necesitas tener autores y géneros registrados.
+          <router-link to="/autores" style="color: #667eea;">Ir a Autores</router-link> |
+          <router-link to="/generos" style="color: #667eea;">Ir a Géneros</router-link>
+        </p>
       </div>
       
       <div v-else class="table-responsive">
@@ -44,25 +49,35 @@
           <tbody>
             <tr v-for="libro in libros" :key="libro.libro_id">
               <td>{{ libro.libro_id }}</td>
-              <td>{{ libro.titulo }}</td>
+              <td>
+                <strong>{{ libro.titulo }}</strong>
+              </td>
               <td>{{ libro.anio_publicacion || 'N/A' }}</td>
               <td>
-                <span v-if="libro.autores && libro.autores.length">
-                  <span v-for="(autor, index) in libro.autores" :key="autor.autor_id">
+                <div v-if="libro.autores && libro.autores.length">
+                  <span 
+                    v-for="(autor, index) in libro.autores" 
+                    :key="autor.autor_id"
+                    class="autor-tag"
+                  >
                     {{ autor.nombre }} {{ autor.apellido }}
                     <span v-if="index < libro.autores.length - 1">, </span>
                   </span>
-                </span>
-                <span v-else>Sin autores</span>
+                </div>
+                <span v-else style="color: #999; font-style: italic;">Sin autores</span>
               </td>
               <td>
-                <span v-if="libro.generos && libro.generos.length">
-                  <span v-for="(genero, index) in libro.generos" :key="genero.genero_id">
+                <div v-if="libro.generos && libro.generos.length">
+                  <span 
+                    v-for="(genero, index) in libro.generos" 
+                    :key="genero.genero_id"
+                    class="genero-tag"
+                  >
                     {{ genero.nombre }}
                     <span v-if="index < libro.generos.length - 1">, </span>
                   </span>
-                </span>
-                <span v-else>Sin géneros</span>
+                </div>
+                <span v-else style="color: #999; font-style: italic;">Sin géneros</span>
               </td>
               <td>
                 <button 
@@ -85,125 +100,39 @@
       </div>
     </div>
     
-    <!-- Modal para crear/editar libro -->
-    <div v-if="showModal" class="modal-overlay">
-      <div class="modal">
-        <div class="modal-header">
-          <h3 class="modal-title">
-            {{ isEditing ? 'Editar Libro' : 'Nuevo Libro' }}
-          </h3>
-          <button @click="closeModal" class="modal-close">&times;</button>
-        </div>
-        
-        <form @submit.prevent="saveLibro">
-          <div class="form-group">
-            <label class="form-label">Título *</label>
-            <input 
-              v-model="currentLibro.titulo"
-              type="text" 
-              class="form-input"
-              placeholder="Ingresa el título del libro"
-              required
-            >
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Año de Publicación</label>
-            <input 
-              v-model="currentLibro.anio_publicacion"
-              type="number" 
-              class="form-input"
-              placeholder="Ingresa el año"
-              min="1000"
-              max="2030"
-            >
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Autores *</label>
-            <div style="max-height: 150px; overflow-y: auto; border: 1px solid #e1e5e9; border-radius: 5px; padding: 10px;">
-              <div v-for="autor in autores" :key="autor.autor_id" style="margin-bottom: 5px;">
-                <label style="display: flex; align-items: center; font-weight: normal;">
-                  <input 
-                    type="checkbox" 
-                    :value="autor.autor_id"
-                    v-model="currentLibro.autores_ids"
-                    class="form-checkbox"
-                  >
-                  {{ autor.nombre }} {{ autor.apellido }}
-                </label>
-              </div>
-            </div>
-            <small v-if="autores.length === 0" style="color: #666;">
-              No hay autores disponibles. <router-link to="/autores">Crear autores</router-link>
-            </small>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Géneros</label>
-            <div style="max-height: 150px; overflow-y: auto; border: 1px solid #e1e5e9; border-radius: 5px; padding: 10px;">
-              <div v-for="genero in generos" :key="genero.genero_id" style="margin-bottom: 5px;">
-                <label style="display: flex; align-items: center; font-weight: normal;">
-                  <input 
-                    type="checkbox" 
-                    :value="genero.genero_id"
-                    v-model="currentLibro.generos_ids"
-                    class="form-checkbox"
-                  >
-                  {{ genero.nombre }}
-                </label>
-              </div>
-            </div>
-            <small v-if="generos.length === 0" style="color: #666;">
-              No hay géneros disponibles. <router-link to="/generos">Crear géneros</router-link>
-            </small>
-          </div>
-          
-          <div class="modal-footer">
-            <button type="button" @click="closeModal" class="btn btn-secondary">
-              Cancelar
-            </button>
-            <button type="submit" class="btn btn-primary" :disabled="loadingAction">
-              {{ loadingAction ? 'Guardando...' : 'Guardar' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Componente de formulario para crear/editar libro -->
+    <LibroForm
+      v-if="showModal"
+      :libro="selectedLibro"
+      @close="closeModal"
+      @saved="onLibroSaved"
+    />
   </div>
 </template>
 
 <script>
 import api from '@/services/api'
+import LibroForm from './LibroForm.vue'
 
 export default {
   name: 'LibroList',
+  components: {
+    LibroForm
+  },
   data() {
     return {
       libros: [],
-      autores: [],
-      generos: [],
       showModal: false,
-      isEditing: false,
-      currentLibro: {
-        libro_id: null,
-        titulo: '',
-        anio_publicacion: null,
-        autores_ids: [],
-        generos_ids: []
-      },
+      selectedLibro: null, // null para nuevo libro, objeto para editar
       loading: false,
-      loadingAction: false,
       error: '',
-      success: ''
+      success: '',
+      hasAutoresOrGeneros: true
     }
   },
   async created() {
-    await Promise.all([
-      this.loadLibros(),
-      this.loadAutores(),
-      this.loadGeneros()
-    ])
+    await this.loadLibros()
+    await this.checkRequiredData()
   },
   methods: {
     async loadLibros() {
@@ -215,38 +144,44 @@ export default {
         this.libros = response.data || []
       } catch (error) {
         console.error('Error cargando libros:', error)
-        this.error = 'Error al cargar los libros'
+        this.error = 'Error al cargar los libros. Verifica la conexión con el servidor.'
       } finally {
         this.loading = false
       }
     },
     
-    async loadAutores() {
+    async checkRequiredData() {
       try {
-        const response = await api.getAutores()
-        this.autores = response.data || []
+        const [autoresResponse, generosResponse] = await Promise.all([
+          api.getAutores(),
+          api.getGeneros()
+        ])
+        
+        const autores = autoresResponse.data || []
+        const generos = generosResponse.data || []
+        
+        this.hasAutoresOrGeneros = autores.length > 0 && generos.length > 0
       } catch (error) {
-        console.error('Error cargando autores:', error)
+        console.error('Error verificando datos requeridos:', error)
+        this.hasAutoresOrGeneros = false
       }
     },
     
-    async loadGeneros() {
-      try {
-        const response = await api.getGeneros()
-        this.generos = response.data || []
-      } catch (error) {
-        console.error('Error cargando géneros:', error)
+    openNewLibroModal() {
+      if (!this.hasAutoresOrGeneros) {
+        this.showErrorMessage('Necesitas tener autores y géneros registrados antes de crear un libro')
+        return
       }
+      this.selectedLibro = null
+      this.showModal = true
     },
     
     editLibro(libro) {
-      this.isEditing = true
-      this.currentLibro = {
-        libro_id: libro.libro_id,
-        titulo: libro.titulo,
-        anio_publicacion: libro.anio_publicacion,
-        autores_ids: libro.autores ? libro.autores.map(a => a.autor_id) : [],
-        generos_ids: libro.generos ? libro.generos.map(g => g.genero_id) : []
+      // Crear una copia profunda del libro para editar
+      this.selectedLibro = {
+        ...libro,
+        autores: libro.autores ? [...libro.autores] : [],
+        generos: libro.generos ? [...libro.generos] : []
       }
       this.showModal = true
     },
@@ -258,71 +193,74 @@ export default {
       
       try {
         await api.deleteLibro(libro.libro_id)
-        this.success = 'Libro eliminado con éxito'
+        this.showSuccessMessage('Libro eliminado con éxito')
         await this.loadLibros()
-        this.clearMessages()
       } catch (error) {
         console.error('Error eliminando libro:', error)
-        this.error = 'Error al eliminar el libro'
-        this.clearMessages()
-      }
-    },
-    
-    async saveLibro() {
-      if (!this.currentLibro.titulo.trim()) {
-        this.error = 'El título es requerido'
-        this.clearMessages()
-        return
-      }
-      
-      if (this.currentLibro.autores_ids.length === 0) {
-        this.error = 'Debe seleccionar al menos un autor'
-        this.clearMessages()
-        return
-      }
-      
-      this.loadingAction = true
-      this.error = ''
-      
-      try {
-        if (this.isEditing) {
-          await api.updateLibro(this.currentLibro)
-          this.success = 'Libro actualizado con éxito'
-        } else {
-          await api.createLibro(this.currentLibro)
-          this.success = 'Libro creado con éxito'
-        }
         
-        this.closeModal()
-        await this.loadLibros()
-        this.clearMessages()
-      } catch (error) {
-        console.error('Error guardando libro:', error)
-        this.error = error.response?.data?.error || 'Error al guardar el libro'
-        this.clearMessages()
-      } finally {
-        this.loadingAction = false
+        // Manejo específico de errores
+if (error.response && error.response.status === 404) {
+          this.showErrorMessage('El libro no existe')
+} else if (error.response && error.response.status === 400) {
+this.showErrorMessage((error.response && error.response.data && error.response.data.error) || 'Error al eliminar el libro')
+        } else {
+          this.showErrorMessage('Error al eliminar el libro')
+        }
       }
     },
     
     closeModal() {
       this.showModal = false
-      this.isEditing = false
-      this.currentLibro = {
-        libro_id: null,
-        titulo: '',
-        anio_publicacion: null,
-        autores_ids: [],
-        generos_ids: []
-      }
+      this.selectedLibro = null
+    },
+    
+    async onLibroSaved() {
+      const message = this.selectedLibro ? 'Libro actualizado con éxito' : 'Libro creado con éxito'
+      this.showSuccessMessage(message)
+      await this.loadLibros()
+    },
+    
+    showSuccessMessage(message) {
+      this.success = message
+      this.error = ''
+      this.clearMessages()
+    },
+    
+    showErrorMessage(message) {
+      this.error = message
+      this.success = ''
+      this.clearMessages()
     },
     
     clearMessages() {
       setTimeout(() => {
         this.error = ''
         this.success = ''
-      }, 3000)
+      }, 5000)
     }
   }
 }
 </script>
+
+<style scoped>
+.autor-tag, .genero-tag {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.autor-tag {
+  background-color: #e3f2fd;
+  padding: 2px 6px;
+  border-radius: 12px;
+  margin: 2px;
+  display: inline-block;
+}
+
+.genero-tag {
+  background-color: #f3e5f5;
+  padding: 2px 6px;
+  border-radius: 12px;
+  margin: 2px;
+  display: inline-block;
+}
+</style>

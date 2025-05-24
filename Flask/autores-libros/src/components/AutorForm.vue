@@ -169,7 +169,7 @@ export default {
         this.$emit('close')
       } catch (error) {
         console.error('Error al guardar autor:', error)
-        this.error = error.response?.data?.error || 'Error al guardar el autor'
+this.error = (error.response && error.response.data && error.response.data.error) || 'Error al guardar el autor'
       } finally {
         this.loading = false
       }

@@ -88,8 +88,9 @@ export default {
         }
       } catch (error) {
         console.error('Error login:', error)
-        this.error = error.response?.data?.error || error.response?.data?.message || 'Error al iniciar sesión'
-      } finally {
+this.error = (error.response && error.response.data && error.response.data.error) || 
+             (error.response && error.response.data && error.response.data.message) || 
+             'Error al iniciar sesión'      } finally {
         this.loading = false
       }
     }

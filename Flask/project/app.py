@@ -25,7 +25,7 @@ app.register_blueprint(autor_blueprint)
 app.register_blueprint(genero_blueprint)
 app.register_blueprint(auth_blueprint)
 
-cors = CORS(app)
-
+# Configuración CORS - permite todas las rutas y métodos
+CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}}, supports_credentials=True)
 if __name__ == "__main__":
     app.run(debug=True)

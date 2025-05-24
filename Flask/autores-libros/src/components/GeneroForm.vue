@@ -114,7 +114,7 @@ export default {
         this.$emit('close')
       } catch (error) {
         console.error('Error al guardar género:', error)
-        this.error = error.response?.data?.error || 'Error al guardar el género'
+        this.error = (error.response||error.response.data||error.response.data.error) || 'Error al guardar el género'
       } finally {
         this.loading = false
       }
