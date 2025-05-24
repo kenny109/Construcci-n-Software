@@ -13,6 +13,11 @@ def export_swagger():
     # Creamos la aplicación
     app = create_app()
     
+    # Añadimos las configuraciones necesarias para generar URLs correctamente
+    app.config['SERVER_NAME'] = 'localhost:5000'
+    app.config['APPLICATION_ROOT'] = '/'
+    app.config['PREFERRED_URL_SCHEME'] = 'http'
+    
     # Creamos el contexto de la aplicación
     with app.app_context():
         # Obtenemos la especificación Swagger

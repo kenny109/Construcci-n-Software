@@ -193,6 +193,10 @@ orcid_work_model = api.model('Publicación ORCID', {
     'doi': fields.String(description='DOI de la publicación'),
     'url': fields.String(description='URL de la publicación')
 })
+# Modelo para lista de trabajos ORCID
+orcid_works_response_model = api.model('OrcidWorksResponse', {
+    'data': fields.List(fields.Nested(orcid_work_model), description='Lista de publicaciones del investigador')
+})
 
 # Definición de ejemplos de respuestas de endpoints
 @authors_ns.route('/')
@@ -286,7 +290,7 @@ class OrcidResearcher(Resource):
 @api.doc(params={'orcid_id': 'Identificador ORCID del investigador'})
 class OrcidWorks(Resource):
     @api.doc('obtener_publicaciones', security='Bearer')
-    @api.response(200, 'Operación exitosa', {'data': [orcid_work_model]})
+    @api.response(200, 'Operación exitosa', orcid_works_response_model)  # Usar el nuevo modelo aquí
     @api.response(404, 'Publicaciones no encontradas')
     @api.response(401, 'No autorizado')
     def get(self, orcid_id):
