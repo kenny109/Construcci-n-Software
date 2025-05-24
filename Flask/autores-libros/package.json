@@ -2,7 +2,7 @@
   "name": "autores-libros",
   "version": "1.0.0",
   "description": "Frontend para gestión de autores y libros",
-  "author": "Kenny",
+  "author": "Kenny_y_marycielo",
   "private": true,
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
