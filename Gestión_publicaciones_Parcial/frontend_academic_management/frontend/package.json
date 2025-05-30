@@ -1,8 +1,8 @@
 {
-  "name": "autores-libros",
+  "name": "frontend",
   "version": "1.0.0",
-  "description": "Frontend para gestión de autores y libros",
-  "author": "Kenny_y_marycielo",
+  "description": "Frontend de academic management",
+  "author": "kennymen <kfloresc@ulasalle.edu.pe>",
   "private": true,
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
@@ -10,13 +10,10 @@
     "build": "node build/build.js"
   },
   "dependencies": {
-    "bootstrap": "^4.6.2",
-    "bootstrap-vue": "^2.23.1",
-    "vue": "^3.2.13",
-    "vue-router": "^4.0.3",
     "axios": "^1.4.0",
-    "vuex": "^3.6.2", 
-    "pinia": "^2.1.4"
+    "pinia": "^2.1.4",
+    "vue": "^3.5.16",
+    "vue-router": "^4.0.3"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",
