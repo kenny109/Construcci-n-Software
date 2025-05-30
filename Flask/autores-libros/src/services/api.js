@@ -67,9 +67,15 @@ export default {
     return api.delete('/autor', { data: { autor_id: autorId } })
   },
 
-  getLibrosByAutor(autorId) {
-    return api.get('/autor/libros', { autor_id: autorId })
-  },
+ getLibrosByAutor(autorId) {
+  return api.get('/autor/libros', {
+    params: { autor_id: autorId }  // Correcto: esto se convierte en ?autor_id=...
+  })
+}
+
+,
+
+
 
   // Libro endpoints
   getLibros() {

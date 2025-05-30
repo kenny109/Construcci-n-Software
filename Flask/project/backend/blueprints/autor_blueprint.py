@@ -86,12 +86,15 @@ def get_autor():
 def get_autores():
     return jsonify(model.get_autores())
 
+
+
 @autor_blueprint.route('/autor/libros', methods=['GET'])
 @cross_origin()
 @token_required
 def get_libros_by_autor():
-    if not request.json or 'autor_id' not in request.json:
+    autor_id = request.args.get('autor_id')
+    if not autor_id:
         return jsonify({'error': 'ID de autor no proporcionado'}), 400
-    
-    result = model.get_libros_by_autor(int(request.json['autor_id']))
+
+    result = model.get_libros_by_autor(int(autor_id))
     return jsonify(result)
