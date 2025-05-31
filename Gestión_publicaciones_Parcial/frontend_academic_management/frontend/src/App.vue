@@ -9,7 +9,6 @@
           <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
           <router-link to="/authors" class="nav-link">Autores</router-link>
           <router-link to="/publications" class="nav-link">Publicaciones</router-link>
-          <router-link to="/journals" class="nav-link">Revistas</router-link>
           <button @click="logout" class="btn-logout">Cerrar Sesión</button>
         </div>
       </nav>

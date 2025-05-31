@@ -6,7 +6,6 @@ import Login from '../components/Login.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Authors from '../components/Authors.vue'
 import Publications from '../components/Publications.vue'
-import Journals from '../components/Journals.vue'
 
 const routes = [
   {
@@ -37,12 +36,7 @@ const routes = [
     component: Publications,
     meta: { requiresAuth: true }
   },
-  {
-    path: '/journals',
-    name: 'Journals',
-    component: Journals,
-    meta: { requiresAuth: true }
-  }
+  
 ]
 
 const router = createRouter({
