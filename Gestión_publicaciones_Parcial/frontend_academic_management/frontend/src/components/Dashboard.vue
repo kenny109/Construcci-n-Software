@@ -1,355 +1,320 @@
 <template>
-    <div class="dashboard">
-        <div class="dashboard-header">
-            <h1>Dashboard</h1>
-            <p>Bienvenido al Sistema de Gestión de Publicaciones</p>
-        </div>
-
-        <div class="stats-grid grid grid-4">
-            <div class="stat-card card">
-                
-                
-                <div class="stat-content">
-                    <h3>{{ stats.authors }}</h3>
-                    <p>Autores</p>
-                </div>
-            </div>
-
-            <div class="stat-card card">
-                <div class="stat-icon">
-                    📚
-                </div>
-                <div class="stat-content">
-                    <h3>{{ stats.publications }}</h3>
-                    <p>Publicaciones</p>
-                </div>
-            </div>
-
-            <div class="stat-card card">
-                <div class="stat-icon">
-                    📖
-                </div>
-                <div class="stat-content">
-                    <h3>{{ stats.journals }}</h3>
-                    <p>Revistas</p>
-                </div>
-            </div>
-
-            <div class="stat-card card">
-                <div class="stat-icon">
-                    👤
-                </div>
-                <div class="stat-content">
-                    <h3>{{ stats.users }}</h3>
-                    <p>Usuarios</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="dashboard-content grid grid-2">
-            <div class="recent-publications card">
-                <div class="card-header">
-                    <h2>Publicaciones Recientes</h2>
-                    <router-link to="/publications" class="btn btn-sm btn-primary">
-                        Ver todas
-                    </router-link>
-                </div>
-                <div class="publications-list">
-                    <div v-if="loading.publications" class="loading">
-                        <div class="spinner"></div>
-                    </div>
-                    <div v-else-if="recentPublications.length === 0" class="empty-state">
-                        No hay publicaciones recientes
-                    </div>
-                    <div v-else>
-                        <div v-for="publication in recentPublications" :key="publication.id" class="publication-item">
-                            <h4>{{ publication.title }}</h4>
-                            <p class="publication-meta">
-                                {{ formatDate(publication.publication_date) }} •
-                                {{ publication.publication_type?.name }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="top-authors card">
-                <div class="card-header">
-                    <h2>Autores Más Activos</h2>
-                    <router-link to="/authors" class="btn btn-sm btn-primary">
-                        Ver todos
-                    </router-link>
-                </div>
-                <div class="authors-list">
-                    <div v-if="loading.authors" class="loading">
-                        <div class="spinner"></div>
-                    </div>
-                    <div v-else-if="topAuthors.length === 0" class="empty-state">
-                        No hay autores registrados
-                    </div>
-                    <div v-else>
-                        <div v-for="author in topAuthors" :key="author.id" class="author-item">
-                            <div class="author-info">
-                                <h4>{{ author.first_name }} {{ author.last_name }}</h4>
-                                <p>{{ author.institution }}</p>
-                            </div>
-                            <div class="author-stats">
-                                <span class="publication-count">{{ author.publication_count || 0 }} pub.</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="dashboard">
+    <div class="dashboard-header">
+      <h1>Dashboard</h1>
+      <p>Bienvenido al sistema de gestión académica</p>
     </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="icon-users">👥</i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.authors }}</h3>
+          <p>Autores</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="icon-publications">📚</i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.publications }}</h3>
+          <p>Publicaciones</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="icon-users-admin">👤</i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.users }}</h3>
+          <p>Usuarios</p>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="icon-active">✅</i>
+        </div>
+        <div class="stat-content">
+          <h3>{{ stats.active }}</h3>
+          <p>Registros Activos</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="dashboard-actions">
+      <h2>Acciones Rápidas</h2>
+      <div class="actions-grid">
+        <router-link to="/authors" class="action-card">
+          <div class="action-icon">👥</div>
+          <h3>Gestionar Autores</h3>
+          <p>Crear, editar y eliminar autores</p>
+        </router-link>
+        
+        <router-link to="/publications" class="action-card">
+          <div class="action-icon">📚</div>
+          <h3>Gestionar Publicaciones</h3>
+          <p>Administrar publicaciones académicas</p>
+        </router-link>
+        
+        <router-link to="/users" class="action-card">
+          <div class="action-icon">👤</div>
+          <h3>Gestionar Usuarios</h3>
+          <p>Administrar usuarios del sistema</p>
+        </router-link>
+      </div>
+    </div>
+    
+    <div v-if="recentActivities.length > 0" class="recent-activities">
+      <h2>Actividad Reciente</h2>
+      <div class="activities-list">
+        <div
+          v-for="activity in recentActivities"
+          :key="activity.id"
+          class="activity-item"
+        >
+          <div class="activity-content">
+            <h4>{{ activity.title }}</h4>
+            <p>{{ activity.description }}</p>
+            <span class="activity-date">{{ formatDate(activity.created_at) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
-import api from '../services/api'
+import apiService from '../services/api'
 
 export default {
-    name: 'Dashboard',
-    setup() {
-        const stats = ref({
-            authors: 0,
-            publications: 0,
-            journals: 0,
-            users: 0
-        })
-
-        const recentPublications = ref([])
-        const topAuthors = ref([])
-
-        const loading = ref({
-            stats: false,
-            publications: false,
-            authors: false
-        })
-
-        const loadStats = async () => {
-            loading.value.stats = true
-            try {
-                // Cargar estadísticas básicas
-                const [authorsRes, publicationsRes, journalsRes, usersRes] = await Promise.all([
-                    api.get('/authors'),
-                    api.get('/publications'),
-                    api.get('/journals'),
-                    api.get('/users')
-                ])
-
-                stats.value = {
-                    authors: authorsRes.data.length,
-                    publications: publicationsRes.data.length,
-                    journals: journalsRes.data.length,
-                    users: usersRes.data.length
-                }
-            } catch (error) {
-                console.error('Error loading stats:', error)
-            } finally {
-                loading.value.stats = false
-            }
+  name: 'Dashboard',
+  setup() {
+    const stats = ref({
+      authors: 0,
+      publications: 0,
+      users: 0,
+      active: 0
+    })
+    
+    const recentActivities = ref([])
+    const isLoading = ref(false)
+    
+    const loadStats = async () => {
+      isLoading.value = true
+      
+      try {
+        const [authorsData, publicationsData, usersData] = await Promise.all([
+          apiService.getAuthors(),
+          apiService.getPublications(),
+          apiService.getUsers()
+        ])
+        
+        stats.value = {
+          authors: authorsData.length || 0,
+          publications: publicationsData.length || 0,
+          users: usersData.length || 0,
+          active: (authorsData.length || 0) + (publicationsData.length || 0) + (usersData.length || 0)
         }
-
-        const loadRecentPublications = async () => {
-            loading.value.publications = true
-            try {
-                const response = await api.get('/publications?limit=5')
-                recentPublications.value = response.data.slice(0, 5)
-            } catch (error) {
-                console.error('Error loading recent publications:', error)
-            } finally {
-                loading.value.publications = false
-            }
-        }
-
-        const loadTopAuthors = async () => {
-            loading.value.authors = true
-            try {
-                const response = await api.get('/authors?limit=5')
-                topAuthors.value = response.data.slice(0, 5)
-            } catch (error) {
-                console.error('Error loading top authors:', error)
-            } finally {
-                loading.value.authors = false
-            }
-        }
-
-        const formatDate = (dateString) => {
-            if (!dateString) return 'Sin fecha'
-            return new Date(dateString).toLocaleDateString('es-ES')
-        }
-
-        onMounted(() => {
-            loadStats()
-            loadRecentPublications()
-            loadTopAuthors()
-        })
-
-        return {
-            stats,
-            recentPublications,
-            topAuthors,
-            loading,
-            formatDate
-        }
+        
+        // Simular actividades recientes
+        recentActivities.value = [
+          {
+            id: 1,
+            title: 'Nuevo autor registrado',
+            description: 'Se ha registrado un nuevo autor en el sistema',
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 2,
+            title: 'Publicación actualizada',
+            description: 'Se ha actualizado una publicación existente',
+            created_at: new Date(Date.now() - 86400000).toISOString()
+          }
+        ]
+      } catch (error) {
+        console.error('Error loading dashboard stats:', error)
+      } finally {
+        isLoading.value = false
+      }
     }
+    
+    const formatDate = (dateString) => {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    }
+    
+    onMounted(() => {
+      loadStats()
+    })
+    
+    return {
+      stats,
+      recentActivities,
+      isLoading,
+      formatDate
+    }
+  }
 }
 </script>
 
 <style scoped>
+.dashboard {
+  padding: 2rem 0;
+}
+
 .dashboard-header {
-    margin-bottom: 2rem;
+  text-align: center;
+  margin-bottom: 3rem;
 }
 
 .dashboard-header h1 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-    color: #1f2937;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.5rem;
 }
 
 .dashboard-header p {
-    color: #6b7280;
-    font-size: 1.1rem;
+  font-size: 1.2rem;
+  color: #666;
 }
 
 .stats-grid {
-    margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
 }
 
 .stat-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
 }
 
 .stat-icon {
-    font-size: 2rem;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
+  font-size: 3rem;
+  margin-right: 1.5rem;
 }
 
 .stat-content h3 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin-bottom: 0.25rem;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
 }
 
 .stat-content p {
-    color: #6b7280;
-    font-size: 0.9rem;
+  color: #666;
+  margin: 0.5rem 0 0 0;
+  font-size: 1.1rem;
 }
 
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+.dashboard-actions {
+  margin-bottom: 3rem;
 }
 
-.card-header h2 {
-    font-size: 1.25rem;
-    color: #1f2937;
+.dashboard-actions h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 1.5rem;
 }
 
-.publications-list,
-.authors-list {
-    max-height: 400px;
-    overflow-y: auto;
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
 }
 
-.publication-item {
-    padding: 1rem 0;
-    border-bottom: 1px solid #f3f4f6;
+.action-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  text-align: center;
 }
 
-.publication-item:last-child {
-    border-bottom: none;
+.action-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
 }
 
-.publication-item h4 {
-    font-size: 1rem;
-    color: #1f2937;
-    margin-bottom: 0.5rem;
-    line-height: 1.4;
+.action-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
 }
 
-.publication-meta {
-    font-size: 0.85rem;
-    color: #6b7280;
+.action-card h3 {
+  font-size: 1.3rem;
+  color: #333;
+  margin-bottom: 0.5rem;
 }
 
-.author-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 0;
-    border-bottom: 1px solid #f3f4f6;
+.action-card p {
+  color: #666;
+  margin: 0;
 }
 
-.author-item:last-child {
-    border-bottom: none;
+.recent-activities {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
-.author-info h4 {
-    font-size: 1rem;
-    color: #1f2937;
-    margin-bottom: 0.25rem;
+.recent-activities h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 1.5rem;
 }
 
-.author-info p {
-    font-size: 0.85rem;
-    color: #6b7280;
+.activities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.publication-count {
-    background-color: #f3f4f6;
-    color: #374151;
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: 500;
+.activity-item {
+  padding: 1rem;
+  border-left: 4px solid #667eea;
+  background-color: #f8f9fa;
+  border-radius: 0 8px 8px 0;
 }
 
-.empty-state {
-    text-align: center;
-    color: #6b7280;
-    padding: 2rem;
-    font-style: italic;
+.activity-content h4 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
 }
 
-@media (max-width: 768px) {
-    .dashboard-content {
-        grid-template-columns: 1fr;
-    }
-
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+.activity-content p {
+  margin: 0 0 0.5rem 0;
+  color: #666;
 }
 
-@media (max-width: 480px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .stat-card {
-        padding: 1rem;
-    }
-
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.5rem;
-    }
+.activity-date {
+  font-size: 0.9rem;
+  color: #999;
 }
 </style>

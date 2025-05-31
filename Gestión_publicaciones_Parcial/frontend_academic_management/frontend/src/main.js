@@ -1,16 +1,11 @@
-import Vue from 'vue'
+import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import { createPinia, PiniaVuePlugin } from 'pinia'
-import './assets/main.css'
+import { createPinia } from 'pinia'
 
-// Crear instancia de Vue 2
-Vue.use(PiniaVuePlugin)
+const app = createApp(App)
 
-const pinia = createPinia()
+app.use(createPinia())
+app.use(router)
 
-new Vue({
-  render: h => h(App),
-  router,
-  pinia
-}).$mount('#app')
+app.mount('#app')

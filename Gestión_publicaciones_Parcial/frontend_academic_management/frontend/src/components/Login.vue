@@ -2,8 +2,8 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h1>Sistema de Gestión de Publicaciones</h1>
-        <p>Ingrese sus credenciales para acceder</p>
+        <h1>Academic Management</h1>
+        <p>Inicia sesión en tu cuenta</p>
       </div>
       
       <form @submit.prevent="handleLogin" class="login-form">
@@ -15,49 +15,124 @@
           <label for="username" class="form-label">Usuario</label>
           <input
             id="username"
-            v-model="credentials.username"
+            v-model="form.username"
             type="text"
-            class="form-input"
-            placeholder="Ingrese su usuario"
+            class="form-control"
             required
-          />
+            placeholder="Ingresa tu usuario"
+          >
         </div>
         
         <div class="form-group">
           <label for="password" class="form-label">Contraseña</label>
           <input
             id="password"
-            v-model="credentials.password"
+            v-model="form.password"
             type="password"
-            class="form-input"
-            placeholder="Ingrese su contraseña"
+            class="form-control"
             required
-          />
+            placeholder="Ingresa tu contraseña"
+          >
         </div>
         
         <button
           type="submit"
-          :disabled="loading"
-          class="btn btn-primary login-btn"
+          class="btn btn-primary btn-login"
+          :disabled="isLoading"
         >
-          <span v-if="loading" class="spinner"></span>
-          {{ loading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
+          {{ isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
         </button>
       </form>
       
       <div class="login-footer">
-        <p><strong>Usuarios de prueba:</strong></p>
-        <ul>
-          <li>admin / admin123</li>
-          <li>user / user123</li>
-        </ul>
+        <p>¿No tienes cuenta? <a href="#" @click="showRegister = true">Regístrate</a></p>
+      </div>
+    </div>
+    
+    <!-- Modal de Registro -->
+    <div v-if="showRegister" class="modal-overlay" @click="closeRegister">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3 class="modal-title">Crear Cuenta</h3>
+          <button @click="closeRegister" class="btn-close">&times;</button>
+        </div>
+        
+        <form @submit.prevent="handleRegister">
+          <div v-if="registerError" class="alert alert-error">
+            {{ registerError }}
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Usuario</label>
+            <input
+              v-model="registerForm.username"
+              type="text"
+              class="form-control"
+              required
+              placeholder="Usuario"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input
+              v-model="registerForm.email"
+              type="email"
+              class="form-control"
+              required
+              placeholder="Email"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input
+              v-model="registerForm.first_name"
+              type="text"
+              class="form-control"
+              required
+              placeholder="Nombre"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Apellido</label>
+            <input
+              v-model="registerForm.last_name"
+              type="text"
+              class="form-control"
+              required
+              placeholder="Apellido"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Contraseña</label>
+            <input
+              v-model="registerForm.password"
+              type="password"
+              class="form-control"
+              required
+              placeholder="Contraseña"
+            >
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" @click="closeRegister" class="btn btn-secondary">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" :disabled="isRegistering">
+              {{ isRegistering ? 'Creando...' : 'Crear Cuenta' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -67,34 +142,84 @@ export default {
     const router = useRouter()
     const authStore = useAuthStore()
     
-    const credentials = ref({
+    const form = ref({
       username: '',
       password: ''
     })
     
-    const loading = ref(false)
-    const error = ref('')
+    const registerForm = ref({
+      username: '',
+      email: '',
+      first_name: '',
+      last_name: '',
+      password: ''
+    })
+    
+    const showRegister = ref(false)
+    const registerError = ref('')
+    const isRegistering = ref(false)
+    
+    const isLoading = computed(() => authStore.isLoading)
+    const error = computed(() => authStore.error)
     
     const handleLogin = async () => {
-      loading.value = true
-      error.value = ''
-      
-      const result = await authStore.login(credentials.value)
-      
-      if (result.success) {
+      try {
+        await authStore.login(form.value)
         router.push('/dashboard')
-      } else {
-        error.value = result.message
+      } catch (error) {
+        console.error('Login error:', error)
       }
-      
-      loading.value = false
     }
     
+    const handleRegister = async () => {
+      isRegistering.value = true
+      registerError.value = ''
+      
+      try {
+        await authStore.register(registerForm.value)
+        showRegister.value = false
+        registerForm.value = {
+          username: '',
+          email: '',
+          first_name: '',
+          last_name: '',
+          password: ''
+        }
+        alert('Cuenta creada exitosamente. Ahora puedes iniciar sesión.')
+      } catch (error) {
+        registerError.value = error.message
+      } finally {
+        isRegistering.value = false
+      }
+    }
+    
+    const closeRegister = () => {
+      showRegister.value = false
+      registerError.value = ''
+      registerForm.value = {
+        username: '',
+        email: '',
+        first_name: '',
+        last_name: '',
+        password: ''
+      }
+    }
+    
+    onMounted(() => {
+      authStore.initializeAuth()
+    })
+    
     return {
-      credentials,
-      loading,
+      form,
+      registerForm,
+      showRegister,
+      registerError,
+      isRegistering,
+      isLoading,
       error,
-      handleLogin
+      handleLogin,
+      handleRegister,
+      closeRegister
     }
   }
 }
@@ -107,14 +232,14 @@ export default {
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 1rem;
+  padding: 2rem;
 }
 
 .login-card {
   background: white;
   border-radius: 16px;
-  padding: 2.5rem;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  padding: 3rem;
   width: 100%;
   max-width: 400px;
 }
@@ -125,58 +250,46 @@ export default {
 }
 
 .login-header h1 {
-  font-size: 1.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
   margin-bottom: 0.5rem;
-  color: #1f2937;
 }
 
 .login-header p {
-  color: #6b7280;
-  font-size: 0.9rem;
+  color: #666;
+  font-size: 1rem;
 }
 
 .login-form {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
-.login-btn {
+.btn-login {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.login-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .login-footer {
   text-align: center;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
 }
 
-.login-footer p {
-  font-size: 0.8rem;
-  color: #6b7280;
-  margin-bottom: 0.5rem;
+.login-footer a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
 }
 
-.login-footer ul {
-  list-style: none;
-  font-size: 0.8rem;
-  color: #374151;
+.login-footer a:hover {
+  text-decoration: underline;
 }
 
-.login-footer li {
-  margin-bottom: 0.25rem;
-  font-family: monospace;
-  background-color: #f3f4f6;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  display: inline-block;
-  margin-right: 0.5rem;
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
 }
 </style>

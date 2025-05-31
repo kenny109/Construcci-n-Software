@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
-// Import components
 import Login from '../components/Login.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Authors from '../components/Authors.vue'
@@ -10,13 +9,12 @@ import Publications from '../components/Publications.vue'
 const routes = [
   {
     path: '/',
-    redirect: '/dashboard'
+    redirect: '/login'
   },
   {
     path: '/login',
     name: 'Login',
-    component: Login,
-    meta: { requiresGuest: true }
+    component: Login
   },
   {
     path: '/dashboard',
@@ -36,7 +34,12 @@ const routes = [
     component: Publications,
     meta: { requiresAuth: true }
   },
-  
+  {
+    path: '/users',
+    name: 'Users',
+    component: Users,
+    meta: { requiresAuth: true }
+  }
 ]
 
 const router = createRouter({
@@ -44,13 +47,12 @@ const router = createRouter({
   routes
 })
 
-// Navigation guards
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
-  } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
+  } else if (to.name === 'Login' && authStore.isAuthenticated) {
     next('/dashboard')
   } else {
     next()
