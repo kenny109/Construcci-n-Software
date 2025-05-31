@@ -25,7 +25,7 @@ const routes = [
     component: () => import('@/views/Countries.vue'),
     meta: { requiresAuth: true }
   },
-  /*{
+  {
     path: '/keywords',
     name: 'Keywords',
     component: () => import('@/views/Keywords.vue'),
@@ -37,11 +37,7 @@ const routes = [
     component: () => import('@/views/PublicationTypes.vue'),
     meta: { requiresAuth: true }
   },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: () => import('@/views/NotFound.vue')
-  }*/
+  
 ]
 
 const router = createRouter({
