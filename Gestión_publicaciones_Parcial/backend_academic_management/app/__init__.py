@@ -1,11 +1,12 @@
-from flask import Flask
 from .config import Config
 from .extensions import db, migrate, jwt
 from .blueprints import register_blueprints
 from .swagger import configure_swagger
-
+from flask import Flask
+from flask_cors import CORS
 def create_app():
     app = Flask(__name__)
+    CORS(app) 
     app.config.from_object(Config)
     
     # Inicializar extensiones
