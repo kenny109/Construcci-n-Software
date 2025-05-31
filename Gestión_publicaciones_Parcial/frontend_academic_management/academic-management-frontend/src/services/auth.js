@@ -1,10 +1,10 @@
 // src/services/auth.js
-import apiClient from './api'
+import api from './api'
 
 export const authService = {
   async login(credentials) {
     try {
-      const response = await apiClient.post('/auth/login', credentials)
+      const response = await api.login(credentials)
       const { access_token, refresh_token, user } = response.data
       
       // Guardar tokens en localStorage
@@ -20,7 +20,7 @@ export const authService = {
 
   async register(userData) {
     try {
-      const response = await apiClient.post('/auth/register', userData)
+      const response = await api.register(userData)
       return response.data
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Error en el registro')
@@ -29,10 +29,7 @@ export const authService = {
 
   async logout() {
     try {
-      const refreshToken = localStorage.getItem('refresh_token')
-      if (refreshToken) {
-        await apiClient.post('/auth/logout', { refresh_token: refreshToken })
-      }
+      await api.logout()
     } catch (error) {
       console.error('Error during logout:', error)
     } finally {
@@ -45,7 +42,7 @@ export const authService = {
 
   async getCurrentUser() {
     try {
-      const response = await apiClient.get('/auth/me')
+      const response = await api.getCurrentUser()
       return response.data
     } catch (error) {
       throw new Error('Error obteniendo información del usuario')
