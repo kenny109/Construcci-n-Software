@@ -539,16 +539,24 @@ export default {
       this.error = ''
       
       try {
-        // Clean form data
         const publicationData = { ...this.form }
-        
-        // Set venue based on selection
-        if (this.publicationVenue === 'journal') {
-          publicationData.conference_id = null
-        } else {
-          publicationData.journal_id = null
-        }
-        
+
+// Limpiar valores vacíos
+if (!publicationData.publication_date) {
+  publicationData.publication_date = null
+}
+if (!publicationData.journal_id) {
+  publicationData.journal_id = null
+}
+if (!publicationData.conference_id) {
+  publicationData.conference_id = null
+}
+if (!publicationData.doi || publicationData.doi.trim() === '') {
+  publicationData.doi = null
+}
+
+
+        console.log('Datos enviados a /publications:', JSON.stringify(publicationData, null, 2))
         let publicationResponse
         
         if (this.showCreateModal) {
@@ -572,9 +580,10 @@ export default {
               
               await api.addAuthorToPublication(publication.id, {
   author_id: authorData.author_id,
-  order: authorData.author_order,
+  author_order: authorData.author_order,      // ← ✅ correcto
   is_corresponding: authorData.is_corresponding
 })
+
 
             }
           }
@@ -596,10 +605,10 @@ export default {
         this.closeModal()
         
       } catch (error) {
-        this.error = 'Error guardando publicación: ' + error.message
-      } finally {
-        this.loading = false
-      }
+  console.error('Respuesta del backend:', error.response?.data || error)
+  this.error = 'Error guardando publicación: ' + (error.response?.data?.error || error.message)
+}
+
     },
     
     async deletePublication(id) {
