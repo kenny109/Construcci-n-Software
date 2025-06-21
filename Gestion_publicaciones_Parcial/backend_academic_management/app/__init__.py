@@ -5,6 +5,7 @@ from .swagger import configure_swagger
 from flask import Flask
 from flask_cors import CORS
 from flask_migrate import upgrade
+import os
 
 def create_app():
     app = Flask(__name__)
@@ -31,8 +32,16 @@ def create_app():
     if not app.config.get('FLASK_DEBUG'):
         with app.app_context():
             try:
-                upgrade()
-                print("Database migrations applied successfully!")
+                # Verificar que las variables estén cargadas
+                db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+                print(f"Database URI: {db_uri[:50]}...")  # Solo mostrar parte para logs
+                
+                if '127.0.0.1' in db_uri:
+                    print("ERROR: Still using localhost database!")
+                    print("Available env vars:", list(os.environ.keys()))
+                else:
+                    upgrade()
+                    print("Database migrations applied successfully!")
             except Exception as e:
                 print(f"Error applying migrations: {e}")
     
