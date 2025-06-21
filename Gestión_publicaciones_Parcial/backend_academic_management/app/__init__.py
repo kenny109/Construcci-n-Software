@@ -8,7 +8,8 @@ def create_app():
     app = Flask(__name__)
     app.url_map.strict_slashes = False
 
-    CORS(app, supports_credentials=True)
+    CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+
 
     app.config.from_object(Config)
 

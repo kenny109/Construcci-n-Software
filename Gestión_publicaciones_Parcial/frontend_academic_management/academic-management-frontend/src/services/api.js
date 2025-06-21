@@ -2,12 +2,13 @@ import axios from 'axios'
 
 class ApiService {
   constructor() {
-    this.baseURL = 'http://127.0.0.1:5000/api/'
+    this.baseURL = 'http://127.0.0.1:5000/api'
     this.token = localStorage.getItem('token')
     
     // Configure axios defaults
     axios.defaults.baseURL = this.baseURL
-    
+    axios.defaults.withCredentials = true
+
     if (this.token) {
       this.setAuthToken(this.token)
     }
@@ -56,6 +57,15 @@ class ApiService {
     }
   }
 
+  async register(userData) {
+    try {
+      const response = await axios.post('/auth/register', userData)
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al registrar usuario')
+    }
+  }
+
   // Generic CRUD operations
   async getItems(endpoint, params = {}) {
     try {
@@ -66,9 +76,18 @@ class ApiService {
     }
   }
 
+  async getItem(endpoint, id) {
+    try {
+      const response = await axios.get(`/${endpoint}/${id}`)
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al cargar elemento')
+    }
+  }
+
   async createItem(endpoint, data) {
     try {
-      const response = await axios.post(`${endpoint}`, data)
+      const response = await axios.post(`/${endpoint}`, data)
       return response.data
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Error al crear elemento')
@@ -76,19 +95,17 @@ class ApiService {
   }
 
   async updateItem(endpoint, id, data) {
-  try {
-    const formCopy = { ...data }
-    delete formCopy.id  // Quitar ID del cuerpo, ya va en la URL
+    try {
+      const formCopy = { ...data }
+      delete formCopy.id  // Quitar ID del cuerpo, ya va en la URL
 
-    const response = await axios.put(`${endpoint}/${id}`, formCopy)
-    return response.data
-
-  } catch (error) {
-    console.error('Error del backend:', error.response?.data)
-    throw new Error(error.response?.data?.error || 'Error al actualizar elemento')
+      const response = await axios.put(`/${endpoint}/${id}`, formCopy)
+      return response.data
+    } catch (error) {
+      console.error('Error del backend:', error.response?.data)
+      throw new Error(error.response?.data?.error || 'Error al actualizar elemento')
+    }
   }
-}
-
 
   async deleteItem(endpoint, id) {
     try {
@@ -100,6 +117,8 @@ class ApiService {
   }
 
   // Specific methods for each entity
+  
+  // Countries
   async getCountries(params = {}) {
     return this.getItems('countries', params)
   }
@@ -116,6 +135,7 @@ class ApiService {
     return this.deleteItem('countries', id)
   }
 
+  // Keywords
   async getKeywords(params = {}) {
     return this.getItems('keywords', params)
   }
@@ -132,6 +152,7 @@ class ApiService {
     return this.deleteItem('keywords', id)
   }
 
+  // Publication Types
   async getPublicationTypes(params = {}) {
     return this.getItems('publication-types', params)
   }
@@ -147,6 +168,100 @@ class ApiService {
   async deletePublicationType(id) {
     return this.deleteItem('publication-types', id)
   }
+
+  // Authors
+  async getAuthors(params = {}) {
+    return this.getItems('authors', params)
+  }
+
+  async createAuthor(data) {
+    return this.createItem('authors', data)
+  }
+
+  async updateAuthor(id, data) {
+    return this.updateItem('authors', id, data)
+  }
+
+  async deleteAuthor(id) {
+    return this.deleteItem('authors', id)
+  }
+
+  // Journals
+  async getJournals(params = {}) {
+    return this.getItems('journals', params)
+  }
+
+  async createJournal(data) {
+    return this.createItem('journals', data)
+  }
+
+  async updateJournal(id, data) {
+    return this.updateItem('journals', id, data)
+  }
+
+  async deleteJournal(id) {
+    return this.deleteItem('journals', id)
+  }
+
+  // Conferences
+  async getConferences(params = {}) {
+    return this.getItems('conferences', params)
+  }
+
+  async createConference(data) {
+    return this.createItem('conferences', data)
+  }
+
+  async updateConference(id, data) {
+    return this.updateItem('conferences', id, data)
+  }
+
+  async deleteConference(id) {
+    return this.deleteItem('conferences', id)
+  }
+
+  // Publications
+  async getPublications(params = {}) {
+    return this.getItems('publications', params)
+  }
+
+  async getPublication(id) {
+    return this.getItem('publications', id)
+  }
+
+  async createPublication(data) {
+    return this.createItem('publications', data)
+  }
+
+  async updatePublication(id, data) {
+    return this.updateItem('publications', id, data)
+  }
+
+  async deletePublication(id) {
+    return this.deleteItem('publications', id)
+  }
+
+  // Projects
+  async getProjects(params = {}) {
+    return this.getItems('projects', params)
+  }
+
+  async createProject(data) {
+    return this.createItem('projects', data)
+  }
+
+  async updateProject(id, data) {
+    return this.updateItem('projects', id, data)
+  }
+
+  async deleteProject(id) {
+    return this.deleteItem('projects', id)
+  }
+  async addAuthorToPublication(publicationId, authorData) {
+  const response = await axios.post(`/publication-authors/${publicationId}/authors`, authorData)
+  return response.data
+}
+
 }
 
 export default new ApiService()
