@@ -1,8 +1,8 @@
-"""Add external_id to publications
+"""Initial migration with all tables
 
-Revision ID: 3f94e6ba6593
+Revision ID: e0cdffe13d01
 Revises: 
-Create Date: 2025-05-10 04:06:46.417496
+Create Date: 2025-06-21 05:13:26.576628
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '3f94e6ba6593'
+revision = 'e0cdffe13d01'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -59,21 +59,21 @@ def upgrade():
         batch_op.create_foreign_key(None, 'authors', ['author_id'], ['id'])
 
     with op.batch_alter_table('publication_keywords', schema=None) as batch_op:
-        batch_op.drop_constraint('publication_keywords_publication_id_fkey', type_='foreignkey')
         batch_op.drop_constraint('publication_keywords_keyword_id_fkey', type_='foreignkey')
-        batch_op.create_foreign_key(None, 'publications', ['publication_id'], ['id'])
+        batch_op.drop_constraint('publication_keywords_publication_id_fkey', type_='foreignkey')
         batch_op.create_foreign_key(None, 'keywords', ['keyword_id'], ['id'])
+        batch_op.create_foreign_key(None, 'publications', ['publication_id'], ['id'])
 
     with op.batch_alter_table('publication_references', schema=None) as batch_op:
-        batch_op.drop_constraint('publication_references_citing_publication_id_fkey', type_='foreignkey')
         batch_op.drop_constraint('publication_references_referenced_publication_id_fkey', type_='foreignkey')
-        batch_op.create_foreign_key(None, 'publications', ['referenced_publication_id'], ['id'])
+        batch_op.drop_constraint('publication_references_citing_publication_id_fkey', type_='foreignkey')
         batch_op.create_foreign_key(None, 'publications', ['citing_publication_id'], ['id'])
+        batch_op.create_foreign_key(None, 'publications', ['referenced_publication_id'], ['id'])
 
     with op.batch_alter_table('refresh_tokens', schema=None) as batch_op:
         batch_op.alter_column('token',
                existing_type=sa.VARCHAR(length=1000),
-               type_=sa.String(length=255),
+               type_=sa.String(length=512),
                existing_nullable=False)
         batch_op.drop_constraint('refresh_tokens_user_id_fkey', type_='foreignkey')
         batch_op.create_foreign_key(None, 'users', ['user_id'], ['id'])
@@ -87,21 +87,21 @@ def downgrade():
         batch_op.drop_constraint(None, type_='foreignkey')
         batch_op.create_foreign_key('refresh_tokens_user_id_fkey', 'users', ['user_id'], ['id'], ondelete='CASCADE')
         batch_op.alter_column('token',
-               existing_type=sa.String(length=255),
+               existing_type=sa.String(length=512),
                type_=sa.VARCHAR(length=1000),
                existing_nullable=False)
 
     with op.batch_alter_table('publication_references', schema=None) as batch_op:
         batch_op.drop_constraint(None, type_='foreignkey')
         batch_op.drop_constraint(None, type_='foreignkey')
-        batch_op.create_foreign_key('publication_references_referenced_publication_id_fkey', 'publications', ['referenced_publication_id'], ['id'], ondelete='CASCADE')
         batch_op.create_foreign_key('publication_references_citing_publication_id_fkey', 'publications', ['citing_publication_id'], ['id'], ondelete='CASCADE')
+        batch_op.create_foreign_key('publication_references_referenced_publication_id_fkey', 'publications', ['referenced_publication_id'], ['id'], ondelete='CASCADE')
 
     with op.batch_alter_table('publication_keywords', schema=None) as batch_op:
         batch_op.drop_constraint(None, type_='foreignkey')
         batch_op.drop_constraint(None, type_='foreignkey')
-        batch_op.create_foreign_key('publication_keywords_keyword_id_fkey', 'keywords', ['keyword_id'], ['id'], ondelete='CASCADE')
         batch_op.create_foreign_key('publication_keywords_publication_id_fkey', 'publications', ['publication_id'], ['id'], ondelete='CASCADE')
+        batch_op.create_foreign_key('publication_keywords_keyword_id_fkey', 'keywords', ['keyword_id'], ['id'], ondelete='CASCADE')
 
     with op.batch_alter_table('publication_authors', schema=None) as batch_op:
         batch_op.drop_constraint(None, type_='foreignkey')

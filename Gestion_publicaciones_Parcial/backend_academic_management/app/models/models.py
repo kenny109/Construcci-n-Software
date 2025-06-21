@@ -92,7 +92,7 @@ class User(BaseMixin, db.Model):
 class RefreshToken(BaseMixin, db.Model):
     __tablename__ = 'refresh_tokens'
     
-    token = db.Column(db.String(255), nullable=False)
+    token = db.Column(db.String(512), nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
 
