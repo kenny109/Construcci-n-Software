@@ -5,15 +5,16 @@ from datetime import timedelta
 load_dotenv()
 
 class Config:
-    # Verificar DATABASE_URL primero
+    # Debug: verificar qué está pasando
     database_url = os.getenv('DATABASE_URL')
+    print(f"DEBUG - DATABASE_URL exists: {database_url is not None}")
+    print(f"DEBUG - DATABASE_URL value: {database_url[:50] if database_url else 'None'}...")
     
     if database_url:
         print("Using DATABASE_URL from environment")
         SQLALCHEMY_DATABASE_URI = database_url
     else:
         print("Using individual DB variables")
-        # Construcción dinámica para desarrollo local
         SQLALCHEMY_DATABASE_URI = (
             f"postgresql://{os.getenv('DB_USER')}:"
             f"{os.getenv('DB_PASSWORD')}@"
