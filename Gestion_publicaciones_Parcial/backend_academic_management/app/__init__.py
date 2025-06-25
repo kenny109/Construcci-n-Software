@@ -15,7 +15,7 @@ def create_app():
     r"/api/*": {
         "origins": [
             "http://localhost:5173",                     # para desarrollo local
-            "https://construcci-n-software-ipbd.vercel.app"             # reemplaza con tu dominio real en Vercel
+            "https://construcci-n-software-ipbd.vercel.app/"             # reemplaza con tu dominio real en Vercel
         ]
     }
 }, supports_credentials=True)
