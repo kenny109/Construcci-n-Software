@@ -185,7 +185,7 @@ export default {
       this.success = ''
       
       try {
-        const response = await api.createItem('users', this.registerForm)
+await api.register(this.registerForm)
         this.success = 'Registro exitoso. Ya puedes iniciar sesión.'
         
         // Reset form
