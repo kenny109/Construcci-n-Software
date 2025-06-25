@@ -56,43 +56,45 @@ def register():
 
 @bp.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    
-    # Verificar datos necesarios
-    if not data.get('username') or not data.get('password'):
-        return jsonify({'error': 'Se requieren nombre de usuario y contraseña'}), 400
-    
-    # Buscar usuario
-    user = User.query.filter_by(username=data['username']).first()
-    
-    # Verificar si el usuario existe y la contraseña es correcta
-    if not user or not check_password_hash(user.password_hash, data['password']):
-        return jsonify({'error': 'Credenciales inválidas'}), 401
-    
-    # Crear tokens
-    access_token = create_access_token(identity=str(user.id))
-    refresh_token = create_refresh_token(identity=str(user.id))
-    
-    # Guardar refresh token en la base de datos
-    expires_at = datetime.utcnow() + timedelta(days=30)
-    db_refresh_token = RefreshToken(
-        user_id=user.id,
-        token=refresh_token,
-        expires_at=expires_at
-    )
-    db.session.add(db_refresh_token)
-    db.session.commit()
-    
-    return jsonify({
-        'access_token': access_token,
-        'refresh_token': refresh_token,
-        'user': {
-            'id': str(user.id),
-            'username': user.username,
-            'email': user.email,
-            'role': user.role
-        }
-    }), 200
+    try:
+        data = request.get_json()
+
+        if not data.get('username') or not data.get('password'):
+            return jsonify({'error': 'Se requieren nombre de usuario y contraseña'}), 400
+
+        user = User.query.filter_by(username=data['username']).first()
+
+        if not user or not check_password_hash(user.password_hash, data['password']):
+            return jsonify({'error': 'Credenciales inválidas'}), 401
+
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
+
+        expires_at = datetime.utcnow() + timedelta(days=30)
+        db_refresh_token = RefreshToken(
+            user_id=user.id,
+            token=refresh_token,
+            expires_at=expires_at
+        )
+        db.session.add(db_refresh_token)
+        db.session.commit()
+
+        return jsonify({
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'user': {
+                'id': str(user.id),
+                'username': user.username,
+                'email': user.email,
+                'role': user.role
+            }
+        }), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # 🟨 Esto imprimirá el error real en Railway
+        return jsonify({'error': f'Error interno: {str(e)}'}), 500
+
 
 @bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
