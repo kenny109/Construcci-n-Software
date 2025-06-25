@@ -2,7 +2,7 @@ import axios from 'axios'
 
 class ApiService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
+this.baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
     this.token = localStorage.getItem('token')
     
     // Configure axios defaults
