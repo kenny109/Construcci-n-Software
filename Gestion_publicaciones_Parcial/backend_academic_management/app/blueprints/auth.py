@@ -32,6 +32,7 @@ def register():
     
     # Crear nuevo usuario
     new_user = User(
+        id=uuid.uuid4(),   # 👈 Este detalle soluciona tu error
         username=data['username'],
         email=data['email'],
         password_hash=generate_password_hash(data['password']),
@@ -40,6 +41,7 @@ def register():
         role=data.get('role', 'user'),
         orcid_id=data.get('orcid_id')
     )
+
     
     db.session.add(new_user)
     db.session.commit()
