@@ -15,47 +15,52 @@ bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @bp.route('/register', methods=['POST'])
 def register():
-    data = request.get_json()
-    
-    # Verificar datos necesarios
-    required_fields = ['username', 'email', 'password']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({'error': f'Campo {field} es obligatorio'}), 400
-    
-    # Verificar si el usuario ya existe
-    if User.query.filter_by(username=data['username']).first():
-        return jsonify({'error': 'Nombre de usuario ya está en uso'}), 400
-    
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({'error': 'Correo electrónico ya está en uso'}), 400
-    
-    # Crear nuevo usuario
-    new_user = User(
-        id=uuid.uuid4(),   # 👈 Este detalle soluciona tu error
-        username=data['username'],
-        email=data['email'],
-        password_hash=generate_password_hash(data['password']),
-        first_name=data.get('first_name', ''),
-        last_name=data.get('last_name', ''),
-        role=data.get('role', 'user'),
-        orcid_id=data.get('orcid_id')
-    )
+    try:
+        data = request.get_json()
+        
+        # Verificar datos necesarios
+        required_fields = ['username', 'email', 'password']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Campo {field} es obligatorio'}), 400
+        
+        # Verificar si el usuario ya existe
+        if User.query.filter_by(username=data['username']).first():
+            return jsonify({'error': 'Nombre de usuario ya está en uso'}), 400
+        
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'error': 'Correo electrónico ya está en uso'}), 400
+        
+        # Crear nuevo usuario
+        new_user = User(
+            id=uuid.uuid4(),   # 👈 Este detalle soluciona tu error
+            username=data['username'],
+            email=data['email'],
+            password_hash=generate_password_hash(data['password']),
+            first_name=data.get('first_name', ''),
+            last_name=data.get('last_name', ''),
+            role=data.get('role', 'user'),
+            orcid_id=data.get('orcid_id')
+        )
 
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Usuario registrado exitosamente',
+            'user': {
+                'id': str(new_user.id),
+                'username': new_user.username,
+                'email': new_user.email,
+                'role': new_user.role
+            }
+        }), 201
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
     
-    db.session.add(new_user)
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Usuario registrado exitosamente',
-        'user': {
-            'id': str(new_user.id),
-            'username': new_user.username,
-            'email': new_user.email,
-            'role': new_user.role
-        }
-    }), 201
-
 @bp.route('/login', methods=['POST'])
 def login():
     try:
