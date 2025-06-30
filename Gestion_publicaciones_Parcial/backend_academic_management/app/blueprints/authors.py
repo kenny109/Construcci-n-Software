@@ -11,21 +11,31 @@ bp = Blueprint('authors', __name__)
 @jwt_required()
 def create_author():
     data = request.get_json()
-    
-    # Verificar campos obligatorios
-    required_fields = ['first_name', 'last_name']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({'error': f'Campo {field} es obligatorio'}), 400
-    
-    try:
-        author = Author.create(**data)
-        return jsonify({
-            'message': 'Autor creado exitosamente',
-            'data': author.to_dict()
-        }), 201
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+
+        # Verificar campos obligatorios
+        required_fields = ['first_name', 'last_name']
+        for field in required_fields:
+            if not data.get(field) or not data[field].strip():
+                return jsonify({'error': f'Campo {field} es obligatorio'}), 400
+
+        # Convertir strings vacíos en None
+        clean_data = {}
+        for k, v in data.items():
+            if isinstance(v, str):
+                clean_data[k] = v.strip() if v.strip() else None
+            else:
+                clean_data[k] = v
+
+        try:
+            author = Author.create(**clean_data)
+            return jsonify({
+                'message': 'Autor creado exitosamente',
+                'data': author.to_dict()
+            }), 201
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 400
 
 @bp.route('/', methods=['GET'])
 @jwt_required()
