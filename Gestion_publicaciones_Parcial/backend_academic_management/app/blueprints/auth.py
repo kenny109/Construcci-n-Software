@@ -31,19 +31,23 @@ def register():
         if User.query.filter_by(email=data['email']).first():
             return jsonify({'error': 'Correo electrónico ya está en uso'}), 400
         
+        # Limpiar orcid_id
+        orcid_id = data.get('orcid_id')
+        if not orcid_id or not orcid_id.strip():
+            orcid_id = None
+        
         # Crear nuevo usuario
         new_user = User(
-            id=uuid.uuid4(),   # 👈 Este detalle soluciona tu error
+            id=uuid.uuid4(),
             username=data['username'],
             email=data['email'],
             password_hash=generate_password_hash(data['password']),
             first_name=data.get('first_name', ''),
             last_name=data.get('last_name', ''),
             role=data.get('role', 'user'),
-            orcid_id=data.get('orcid_id')
+            orcid_id=orcid_id
         )
 
-        
         db.session.add(new_user)
         db.session.commit()
         
@@ -56,10 +60,12 @@ def register():
                 'role': new_user.role
             }
         }), 201
+
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
     
 @bp.route('/login', methods=['POST'])
 def login():
