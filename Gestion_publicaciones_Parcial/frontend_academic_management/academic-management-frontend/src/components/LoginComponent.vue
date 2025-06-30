@@ -22,13 +22,13 @@
         <h2>Iniciar Sesión</h2>
         
         <div class="form-group">
-          <label for="login-username">Usuario o Email:</label>
+          <label for="login-username">Nombre de Usuario:</label>
           <input
             id="login-username"
             v-model="loginForm.username"
             type="text"
             required
-            placeholder="Ingrese su usuario o email"
+            placeholder="Ingrese su nombre de usuario"
           >
         </div>
 

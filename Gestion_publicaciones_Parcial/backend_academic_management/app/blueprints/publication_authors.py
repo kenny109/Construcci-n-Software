@@ -22,12 +22,12 @@ def get_publication_authors(publication_id):
             author = Author.query.get(pub_author.author_id)
             if author:
                 author_data = author.to_dict()
-                author_data['order'] = pub_author.order
+                author_data['author_order'] = pub_author.author_order
                 author_data['is_corresponding'] = pub_author.is_corresponding
                 authors.append(author_data)
         
         # Ordenar por el campo order
-        authors.sort(key=lambda x: x.get('order', 0))
+        authors.sort(key=lambda x: x.get('author_order', 0))
         
         return jsonify({
             'data': authors,
@@ -70,27 +70,28 @@ def add_publication_author(publication_id):
             return jsonify({'error': 'El autor ya está asociado a esta publicación'}), 400
         
         # Calcular orden si no se proporciona
-        if 'order' not in data:
-            max_order = db.session.query(db.func.max(PublicationAuthor.order)).filter_by(
+        if 'author_order' not in data:
+            max_order = db.session.query(db.func.max(PublicationAuthor.author_order)).filter_by(
                 publication_id=publication_id,
                 is_active=True
             ).scalar() or 0
-            data['order'] = max_order + 1
-        
+            data['author_order'] = max_order + 1
+
         # Crear la relación
         pub_author = PublicationAuthor.create(
             publication_id=publication_id,
             author_id=author_id,
-            order=data.get('order', 1),
+            author_order=data.get('author_order', 1),
             is_corresponding=data.get('is_corresponding', False)
         )
+
         
         return jsonify({
             'message': 'Autor agregado a la publicación exitosamente',
             'data': {
                 'publication_id': str(pub_author.publication_id),
                 'author_id': str(pub_author.author_id),
-                'order': pub_author.order,
+                'author_order': pub_author.author_order,
                 'is_corresponding': pub_author.is_corresponding,
                 'author': author.to_dict()
             }
@@ -123,8 +124,9 @@ def update_publication_author(publication_id, author_id):
             return jsonify({'error': 'El autor no está asociado a esta publicación'}), 404
         
         # Actualizar campos
-        if 'order' in data:
-            pub_author.order = data['order']
+        if 'author_order' in data:
+            pub_author.author_order = data['author_order']
+
         if 'is_corresponding' in data:
             pub_author.is_corresponding = data['is_corresponding']
         
@@ -138,7 +140,7 @@ def update_publication_author(publication_id, author_id):
             'data': {
                 'publication_id': str(pub_author.publication_id),
                 'author_id': str(pub_author.author_id),
-                'order': pub_author.order,
+                'author_order': pub_author.author_order,
                 'is_corresponding': pub_author.is_corresponding,
                 'author': author.to_dict()
             }
@@ -206,7 +208,7 @@ def reorder_publication_authors(publication_id):
             ).first()
             
             if pub_author:
-                pub_author.order = index
+                pub_author.author_order = index
         
         db.session.commit()
         
