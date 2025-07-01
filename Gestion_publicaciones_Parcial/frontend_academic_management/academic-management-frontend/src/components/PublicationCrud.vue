@@ -570,18 +570,7 @@ export default {
 
     const publication = publicationResponse.data || publicationResponse;
 
-    // Handle authors
-    if (this.selectedAuthors.length > 0) {
-      for (const authorData of this.selectedAuthors) {
-        if (authorData.author_id) {
-          await api.addAuthorToPublication(publication.id, {
-            author_id: authorData.author_id,
-            author_order: authorData.author_order,
-            is_corresponding: authorData.is_corresponding
-          });
-        }
-      }
-    }
+    
 
     // Handle keywords
     if (this.selectedKeywords.length > 0) {
