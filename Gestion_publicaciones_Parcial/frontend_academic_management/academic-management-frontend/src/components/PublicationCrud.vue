@@ -535,81 +535,79 @@ export default {
     },
     
     async submitForm() {
-      this.loading = true
-      this.error = ''
-      
-      try {
-        const publicationData = { ...this.form }
+  this.loading = true;
+  this.error = '';
 
-// Limpiar valores vacíos
-if (!publicationData.publication_date) {
-  publicationData.publication_date = null
-}
-if (!publicationData.journal_id) {
-  publicationData.journal_id = null
-}
-if (!publicationData.conference_id) {
-  publicationData.conference_id = null
-}
-if (!publicationData.doi || publicationData.doi.trim() === '') {
-  publicationData.doi = null
-}
+  try {
+    const publicationData = { ...this.form };
 
+    // Limpiar valores vacíos
+    if (!publicationData.publication_date) {
+      publicationData.publication_date = null;
+    }
+    if (!publicationData.journal_id) {
+      publicationData.journal_id = null;
+    }
+    if (!publicationData.conference_id) {
+      publicationData.conference_id = null;
+    }
+    if (!publicationData.doi || publicationData.doi.trim() === '') {
+      publicationData.doi = null;
+    }
 
-        console.log('Datos enviados a /publications:', JSON.stringify(publicationData, null, 2))
-        let publicationResponse
-        
-        if (this.showCreateModal) {
-          publicationResponse = await api.createItem('publications', publicationData)
-        } else {
-          publicationResponse = await api.updateItem('publications', this.form.id, publicationData)
+    console.log(
+      'Datos enviados a /publications:',
+      JSON.stringify(publicationData, null, 2)
+    );
+
+    let publicationResponse;
+
+    if (this.showCreateModal) {
+      publicationResponse = await api.createItem('publications', publicationData);
+    } else {
+      publicationResponse = await api.updateItem('publications', this.form.id, publicationData);
+    }
+
+    const publication = publicationResponse.data || publicationResponse;
+
+    // Handle authors
+    if (this.selectedAuthors.length > 0) {
+      for (const authorData of this.selectedAuthors) {
+        if (authorData.author_id) {
+          await api.addAuthorToPublication(publication.id, {
+            author_id: authorData.author_id,
+            author_order: authorData.author_order,
+            is_corresponding: authorData.is_corresponding
+          });
         }
-        
-        const publication = publicationResponse.data || publicationResponse
-        
-        // Handle authors
-        if (this.selectedAuthors.length > 0) {
-          for (const authorData of this.selectedAuthors) {
-            if (authorData.author_id) {
-              const publicationAuthorData = {
-                publication_id: publication.id,
-                author_id: authorData.author_id,
-                author_order: authorData.author_order,
-                is_corresponding: authorData.is_corresponding
-              }
-              
-              await api.addAuthorToPublication(publication.id, {
-  author_id: authorData.author_id,
-  author_order: authorData.author_order,      // ← ✅ correcto
-  is_corresponding: authorData.is_corresponding
-})
+      }
+    }
 
+    // Handle keywords
+    if (this.selectedKeywords.length > 0) {
+      for (const keyword of this.selectedKeywords) {
+        const publicationKeywordData = {
+          publication_id: publication.id,
+          keyword_id: keyword.id
+        };
 
-            }
-          }
-        }
-        
-        // Handle keywords
-        if (this.selectedKeywords.length > 0) {
-          for (const keyword of this.selectedKeywords) {
-            const publicationKeywordData = {
-              publication_id: publication.id,
-              keyword_id: keyword.id
-            }
-            
-            await api.createItem('publication-keywords', publicationKeywordData)
-          }
-        }
-        
-        await this.loadData()
-        this.closeModal()
-        
-      } catch (error) {
-  console.error('Respuesta del backend:', error.response?.data || error)
-  this.error = 'Error guardando publicación: ' + (error.response?.data?.error || error.message)
-}
+        await api.createItem('publication-keywords', publicationKeywordData);
+      }
+    }
 
-    },
+    await this.loadData();
+    this.closeModal();
+
+  } catch (error) {
+    console.error('Respuesta del backend:', error.response?.data || error);
+    this.error =
+      'Error guardando publicación: ' +
+      (error.response?.data?.error || error.message);
+  } finally {
+    // ✅ Esto asegura que siempre se desactive
+    this.loading = false;
+  }
+},
     
     async deletePublication(id) {
       if (!confirm('¿Está seguro de eliminar esta publicación?')) return

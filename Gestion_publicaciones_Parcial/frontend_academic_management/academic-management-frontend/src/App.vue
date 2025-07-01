@@ -282,7 +282,7 @@ export default {
 #app {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #667eea 0%, #252e64 100%);
 }
 
 .app-container {
@@ -331,7 +331,7 @@ export default {
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #667eea, #252e64);
   color: white;
   border-color: transparent;
 }
@@ -508,7 +508,7 @@ export default {
 
 .config-btn {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #667eea, #252e64);
   color: white;
   border: none;
   border-radius: 25px;
@@ -564,7 +564,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #667eea, #252e64);
   color: white;
 }
 
