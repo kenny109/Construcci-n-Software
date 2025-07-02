@@ -8,11 +8,38 @@
       </button>
     </div>
 
-    <!-- Publications List -->
+    <!-- ✅ NUEVO: Filtros y búsqueda -->
+    <div class="filters-section">
+      <div class="search-container">
+        <input 
+          v-model="searchTitle" 
+          type="text"
+          placeholder="Buscar publicaciones por título..." 
+          class="search-input"
+        />
+      </div>
+      <div class="filter-container">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox" 
+            v-model="showOnlyActive"
+          /> 
+          Solo mostrar publicaciones activas
+        </label>
+      </div>
+    </div>
+
+    <!-- ✅ ACTUALIZADO: Publications List usando filteredPublications -->
     <div class="publications-grid">
-      <div v-for="publication in publications" :key="publication.id" class="publication-card">
+      <div v-for="publication in filteredPublications" :key="publication.id" class="publication-card">
         <div class="publication-header">
           <h3>{{ publication.title }}</h3>
+          <div class="publication-status">
+            <!-- ✅ NUEVO: Indicador de estado activo/inactivo -->
+            <span :class="['status-badge', publication.is_active ? 'active' : 'inactive']">
+              {{ publication.is_active ? 'Activa' : 'Inactiva' }}
+            </span>
+          </div>
           <div class="publication-actions">
             <button @click="editPublication(publication)" class="btn-edit">
               Editar
@@ -39,12 +66,24 @@
       </div>
     </div>
 
+    <!-- ✅ NUEVO: Mensaje cuando no hay resultados -->
+    <div v-if="filteredPublications.length === 0 && !loading" class="no-results">
+      <p v-if="searchTitle">No se encontraron publicaciones que contengan "{{ searchTitle }}"</p>
+      <p v-else-if="showOnlyActive">No hay publicaciones activas</p>
+      <p v-else>No hay publicaciones disponibles</p>
+    </div>
+
     <!-- Create/Edit Modal -->
     <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModal">
       <div class="modal" @click.stop>
         <div class="modal-header">
           <h3>{{ showCreateModal ? 'Nueva Publicación' : 'Editar Publicación' }}</h3>
           <button @click="closeModal" class="close-btn">&times;</button>
+        </div>
+
+        <!-- ✅ NUEVO: Mostrar errores/warnings en la parte superior del modal -->
+        <div v-if="error" :class="['alert', error.startsWith('Warning:') ? 'alert-warning' : 'alert-error']">
+          {{ error }}
         </div>
 
         <form @submit.prevent="submitForm" class="modal-body">
@@ -54,7 +93,12 @@
             
             <div class="form-group">
               <label>Título *</label>
-              <input v-model="form.title" type="text" required>
+              <input 
+                v-model="form.title" 
+                type="text" 
+                required
+                :class="{ 'input-error': error && error.includes('título') }"
+              >
             </div>
 
             <div class="form-group">
@@ -65,7 +109,11 @@
             <div class="form-row">
               <div class="form-group">
                 <label>DOI</label>
-                <input v-model="form.doi" type="text">
+                <input 
+                  v-model="form.doi" 
+                  type="text"
+                  :class="{ 'input-error': error && error.includes('DOI') }"
+                >
               </div>
               
               <div class="form-group">
@@ -77,13 +125,25 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Fecha de Publicación</label>
-                <input v-model="form.publication_date" type="date">
+                <input 
+                  v-model="form.publication_date" 
+                  type="date"
+                  :class="{ 'input-error': error && (error.includes('fecha') || error.includes('año')) }"
+                >
               </div>
               
               <div class="form-group">
                 <label>Número de Citas</label>
                 <input v-model="form.citation_count" type="number" min="0">
               </div>
+            </div>
+
+            <!-- ✅ NUEVO: Campo Estado Activo -->
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="form.is_active">
+                Publicación activa
+              </label>
             </div>
           </div>
 
@@ -94,7 +154,11 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Tipo de Publicación *</label>
-                <select v-model="form.publication_type_id" required>
+                <select 
+                  v-model="form.publication_type_id" 
+                  required
+                  :class="{ 'input-error': error && error.includes('tipo de publicación') }"
+                >
                   <option value="">Seleccionar tipo</option>
                   <option v-for="type in publicationTypes" :key="type.id" :value="type.id">
                     {{ type.name }}
@@ -105,9 +169,15 @@
               <div class="form-group">
                 <label>Nuevo Tipo</label>
                 <div class="input-with-button">
-                  <input v-model="newPublicationType.name" type="text" placeholder="Nombre del nuevo tipo">
+                  <input 
+                    v-model="newPublicationType.name" 
+                    type="text" 
+                    placeholder="Nombre del nuevo tipo"
+                    :class="{ 'input-error': error && error.includes('Tipo ya existe') }"
+                  >
                   <button type="button" @click="createPublicationType" class="btn-add">+</button>
                 </div>
+                <textarea v-model="newPublicationType.description" placeholder="Descripción (opcional)" rows="2"></textarea>
               </div>
             </div>
           </div>
@@ -116,13 +186,18 @@
           <div class="form-section">
             <div class="form-tabs">
               <button type="button" :class="['tab', { active: publicationVenue === 'journal' }]" 
-                      @click="publicationVenue = 'journal'">
+                      @click="publicationVenue = 'journal'; form.conference_id = ''">
                 Revista
               </button>
               <button type="button" :class="['tab', { active: publicationVenue === 'conference' }]" 
-                      @click="publicationVenue = 'conference'">
+                      @click="publicationVenue = 'conference'; form.journal_id = ''">
                 Conferencia
               </button>
+            </div>
+
+            <!-- ✅ NUEVO: Warning para selección múltiple -->
+            <div v-if="form.journal_id && form.conference_id" class="alert alert-warning">
+              ⚠️ Solo puedes seleccionar una revista O una conferencia, no ambas
             </div>
 
             <!-- Journal Section -->
@@ -157,7 +232,12 @@
                     <input v-model="newJournal.name" type="text" placeholder="Nombre de la revista">
                   </div>
                   <div class="form-group">
-                    <input v-model="newJournal.issn" type="text" placeholder="ISSN">
+                    <input 
+                      v-model="newJournal.issn" 
+                      type="text" 
+                      placeholder="ISSN"
+                      :class="{ 'input-error': error && error.includes('ISSN ya existe') }"
+                    >
                   </div>
                 </div>
                 <div class="form-row">
@@ -212,7 +292,7 @@
                     <input v-model="newConference.name" type="text" placeholder="Nombre de la conferencia">
                   </div>
                   <div class="form-group">
-                    <input v-model="newConference.year" type="number" placeholder="Año">
+                    <input v-model="newConference.year" type="number" placeholder="Año" :min="1900" :max="new Date().getFullYear()">
                   </div>
                 </div>
                 <div class="form-row">
@@ -268,11 +348,19 @@
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <input v-model="newAuthor.email" type="email" placeholder="Email">
+                  <input 
+                    v-model="newAuthor.email" 
+                    type="email" 
+                    placeholder="Email"
+                    :class="{ 'input-error': error && error.includes('Email ya registrado') }"
+                  >
                 </div>
                 <div class="form-group">
                   <input v-model="newAuthor.institution" type="text" placeholder="Institución">
                 </div>
+              </div>
+              <div class="form-group">
+                <input v-model="newAuthor.orcid_id" type="text" placeholder="ORCID ID">
               </div>
               <button type="button" @click="createAuthor" class="btn-secondary">
                 Crear Autor
@@ -302,7 +390,12 @@
               </div>
 
               <div class="new-keyword">
-                <input v-model="newKeywordName" type="text" placeholder="Nueva palabra clave">
+                <input 
+                  v-model="newKeywordName" 
+                  type="text" 
+                  placeholder="Nueva palabra clave"
+                  :class="{ 'input-error': error && error.includes('Palabra clave ya existe') }"
+                >
                 <button type="button" @click="createKeyword" class="btn-add">+</button>
               </div>
             </div>
@@ -321,10 +414,11 @@
     <!-- Loading indicator -->
     <div v-if="loading" class="loading">Cargando...</div>
 
-    <!-- Error message -->
-    <div v-if="error" class="error-message">{{ error }}</div>
+    <!-- ✅ REMOVIDO: Error message movido dentro del modal -->
   </div>
 </template>
+
+
 
 <script>
 import api from '../services/api'
@@ -351,6 +445,10 @@ export default {
       loading: false,
       error: '',
       
+      // ✅ NUEVO: Filtros y búsqueda
+      searchTitle: '',
+      showOnlyActive: true,
+      
       publicationVenue: 'journal', // 'journal' or 'conference'
       
       form: {
@@ -362,7 +460,8 @@ export default {
         citation_count: 0,
         publication_type_id: '',
         journal_id: '',
-        conference_id: ''
+        conference_id: '',
+        is_active: true // ✅ NUEVO: Campo is_active
       },
       
       newPublicationType: {
@@ -399,6 +498,25 @@ export default {
   computed: {
     availableKeywords() {
       return this.keywords.filter(k => !this.selectedKeywords.find(sk => sk.id === k.id))
+    },
+    
+    // ✅ NUEVO: Publicaciones filtradas
+    filteredPublications() {
+      let filtered = this.publications
+      
+      // Filtro por título
+      if (this.searchTitle.trim()) {
+        filtered = filtered.filter(pub => 
+          pub.title.toLowerCase().includes(this.searchTitle.toLowerCase())
+        )
+      }
+      
+      // Filtro por activas
+      if (this.showOnlyActive) {
+        filtered = filtered.filter(pub => pub.is_active === true)
+      }
+      
+      return filtered
     }
   },
   
@@ -435,27 +553,46 @@ export default {
       }
     },
     
+    // ✅ MEJORADO: Validación de duplicados
     async createPublicationType() {
       if (!this.newPublicationType.name.trim()) return
+      
+      // Verificar duplicados
+      const exists = this.publicationTypes.find(pt => 
+        pt.name.toLowerCase() === this.newPublicationType.name.toLowerCase()
+      )
+      if (exists) {
+        this.error = 'Error: Tipo ya existe'
+        return
+      }
       
       try {
         const response = await api.createItem('publication-types', this.newPublicationType)
         this.publicationTypes.push(response.data || response)
         this.form.publication_type_id = (response.data || response).id
         this.newPublicationType = { name: '', description: '' }
+        this.error = '' // Limpiar error
       } catch (error) {
         this.error = 'Error creando tipo de publicación: ' + error.message
       }
     },
     
+    // ✅ MEJORADO: Validación ISSN duplicado
     async createJournal() {
       if (!this.newJournal.name.trim()) return
+      
+      // Verificar ISSN duplicado
+      if (this.newJournal.issn && this.journals.find(j => j.issn === this.newJournal.issn)) {
+        this.error = 'Error: ISSN ya existe'
+        return
+      }
       
       try {
         const response = await api.createItem('journals', this.newJournal)
         this.journals.push(response.data || response)
         this.form.journal_id = (response.data || response).id
         this.newJournal = { name: '', issn: '', publisher: '', quartile: '', country_id: '' }
+        this.error = ''
       } catch (error) {
         this.error = 'Error creando revista: ' + error.message
       }
@@ -474,25 +611,44 @@ export default {
       }
     },
     
+    // ✅ MEJORADO: Validación email duplicado
     async createAuthor() {
       if (!this.newAuthor.first_name.trim() || !this.newAuthor.last_name.trim()) return
+      
+      // Verificar email duplicado
+      if (this.newAuthor.email && this.authors.find(a => a.email === this.newAuthor.email)) {
+        this.error = 'Error: Email ya registrado para otro autor'
+        return
+      }
       
       try {
         const response = await api.createItem('authors', this.newAuthor)
         this.authors.push(response.data || response)
         this.newAuthor = { first_name: '', last_name: '', email: '', institution: '', orcid_id: '' }
+        this.error = ''
       } catch (error) {
         this.error = 'Error creando autor: ' + error.message
       }
     },
     
+    // ✅ MEJORADO: Validación palabra clave duplicada
     async createKeyword() {
       if (!this.newKeywordName.trim()) return
+      
+      // Verificar duplicados
+      const exists = this.keywords.find(k => 
+        k.name.toLowerCase() === this.newKeywordName.toLowerCase()
+      )
+      if (exists) {
+        this.error = 'Error: Palabra clave ya existe'
+        return
+      }
       
       try {
         const response = await api.createItem('keywords', { name: this.newKeywordName })
         this.keywords.push(response.data || response)
         this.newKeywordName = ''
+        this.error = ''
       } catch (error) {
         this.error = 'Error creando palabra clave: ' + error.message
       }
@@ -534,69 +690,124 @@ export default {
       this.showEditModal = true
     },
     
-    async submitForm() {
-  this.loading = true;
-  this.error = '';
-
-  try {
-    const publicationData = { ...this.form };
-
-    // Limpiar valores vacíos
-    if (!publicationData.publication_date) {
-      publicationData.publication_date = null;
-    }
-    if (!publicationData.journal_id) {
-      publicationData.journal_id = null;
-    }
-    if (!publicationData.conference_id) {
-      publicationData.conference_id = null;
-    }
-    if (!publicationData.doi || publicationData.doi.trim() === '') {
-      publicationData.doi = null;
-    }
-
-    console.log(
-      'Datos enviados a /publications:',
-      JSON.stringify(publicationData, null, 2)
-    );
-
-    let publicationResponse;
-
-    if (this.showCreateModal) {
-      publicationResponse = await api.createItem('publications', publicationData);
-    } else {
-      publicationResponse = await api.updateItem('publications', this.form.id, publicationData);
-    }
-
-    const publication = publicationResponse.data || publicationResponse;
-
-    
-
-    // Handle keywords
-    if (this.selectedKeywords.length > 0) {
-      for (const keyword of this.selectedKeywords) {
-        const publicationKeywordData = {
-          publication_id: publication.id,
-          keyword_id: keyword.id
-        };
-
-        await api.createItem('publication-keywords', publicationKeywordData);
+    // ✅ MEJORADO: Validaciones completas
+    validateForm() {
+      this.error = ''
+      
+      // Validación título obligatorio
+      if (!this.form.title.trim()) {
+        this.error = 'Warning: Completa este campo (título)'
+        return false
       }
-    }
+      
+      // Validación tipo obligatorio
+      if (!this.form.publication_type_id) {
+        this.error = 'Warning: Selecciona un elemento de la lista (tipo de publicación)'
+        return false
+      }
+      
+      // Validación fecha no futura
+      if (this.form.publication_date) {
+        const pubDate = new Date(this.form.publication_date)
+        const today = new Date()
+        today.setHours(23, 59, 59, 999) // Final del día actual
+        
+        if (pubDate > today) {
+          this.error = 'Error: La fecha de publicación no puede ser futura'
+          return false
+        }
+        
+        // Validación año entre 1900 y actual
+        const year = pubDate.getFullYear()
+        const currentYear = new Date().getFullYear()
+        if (year < 1900 || year > currentYear) {
+          this.error = `Error: El año debe estar entre 1900 y ${currentYear}`
+          return false
+        }
+      }
+      
+      // Validación DOI duplicado (solo en creación)
+      if (this.showCreateModal && this.form.doi && this.form.doi.trim()) {
+        const existingDOI = this.publications.find(p => p.doi === this.form.doi.trim())
+        if (existingDOI) {
+          this.error = 'Error: DOI ya existe'
+          return false
+        }
+      }
+      
+      // Validación: Solo revista O conferencia, no ambas
+      if (this.form.journal_id && this.form.conference_id) {
+        this.error = 'Error: Solo uno de los campos debe tener valor (revista o conferencia)'
+        return false
+      }
+      
+      return true
+    },
+    
+    async submitForm() {
+      // ✅ NUEVO: Validaciones antes de enviar
+      if (!this.validateForm()) {
+        return
+      }
+      
+      this.loading = true;
 
-    await this.loadData();
-    this.closeModal();
+      try {
+        const publicationData = { ...this.form };
 
-  } catch (error) {
-    console.error('Respuesta del backend:', error.response?.data || error);
-    this.error =
-      'Error guardando publicación: ' +
-      (error.response?.data?.error || error.message);
-  } finally {
-    // ✅ Esto asegura que siempre se desactive
-    this.loading = false;
-  }
-},
+        // Limpiar valores vacíos
+        if (!publicationData.publication_date) {
+          publicationData.publication_date = null;
+        }
+        if (!publicationData.journal_id) {
+          publicationData.journal_id = null;
+        }
+        if (!publicationData.conference_id) {
+          publicationData.conference_id = null;
+        }
+        if (!publicationData.doi || publicationData.doi.trim() === '') {
+          publicationData.doi = null;
+        }
+
+        console.log(
+          'Datos enviados a /publications:',
+          JSON.stringify(publicationData, null, 2)
+        );
+
+        let publicationResponse;
+
+        if (this.showCreateModal) {
+          publicationResponse = await api.createItem('publications', publicationData);
+        } else {
+          publicationResponse = await api.updateItem('publications', this.form.id, publicationData);
+        }
+
+        const publication = publicationResponse.data || publicationResponse;
+
+        // Handle keywords
+        if (this.selectedKeywords.length > 0) {
+          for (const keyword of this.selectedKeywords) {
+            const publicationKeywordData = {
+              publication_id: publication.id,
+              keyword_id: keyword.id
+            };
+
+            await api.createItem('publication-keywords', publicationKeywordData);
+          }
+        }
+
+        await this.loadData();
+        this.closeModal();
+
+      } catch (error) {
+        console.error('Respuesta del backend:', error.response?.data || error);
+        this.error =
+          'Error guardando publicación: ' +
+          (error.response?.data?.error || error.message);
+      } finally {
+        this.loading = false;
+      }
+    },
     
     async deletePublication(id) {
       if (!confirm('¿Está seguro de eliminar esta publicación?')) return
@@ -625,7 +836,8 @@ export default {
         citation_count: 0,
         publication_type_id: '',
         journal_id: '',
-        conference_id: ''
+        conference_id: '',
+        is_active: true // ✅ NUEVO: Reset con valor por defecto
       }
       
       this.selectedAuthors = []
@@ -660,6 +872,130 @@ export default {
 </script>
 
 <style scoped>
+/* ✅ NUEVOS ESTILOS PARA LAS FUNCIONALIDADES AÑADIDAS */
+
+.filters-section {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  align-items: center;
+}
+
+.search-container {
+  flex: 1;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.filter-container {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-badge.active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge.inactive {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.publication-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.publication-status {
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-style: italic;
+}
+
+.alert {
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.alert-warning {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+}
+
+.alert-error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.input-error {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+/* Mejorar la apariencia de tabs */
+.form-tabs {
+  display: flex;
+  margin-bottom: 15px;
+}
+
+.tab {
+  padding: 10px 20px;
+  border: 1px solid #ddd;
+  background: #f8f9fa;
+  cursor: pointer;
+  border-bottom: none;
+}
+
+.tab.active {
+  background: white;
+  border-bottom: 1px solid white;
+  margin-bottom: -1px;
+}
+
+.tab:first-child {
+  border-radius: 4px 0 0 0;
+}
+
+.tab:last-child {
+  border-radius: 0 4px 0 0;
+}
 .publications-crud {
   padding: 2rem;
 }
