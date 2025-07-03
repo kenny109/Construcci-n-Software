@@ -83,88 +83,14 @@
           v-if="activeTab === 'publications'" 
           @update-stats="loadStats"
         />
-
-        <!-- Configuración -->
-        <div v-if="activeTab === 'config'" class="config-section">
-          <h2>⚙️ Configuración</h2>
-          <div class="config-grid">
-            <div class="config-card">
-              <h3>🌍 Países</h3>
-              <p>Gestionar países disponibles</p>
-              <button @click="showConfigModal = 'countries'" class="config-btn">
-                Configurar
-              </button>
-            </div>
-            <div class="config-card">
-              <h3>🏷️ Palabras Clave</h3>
-              <p>Gestionar palabras clave</p>
-              <button @click="showConfigModal = 'keywords'" class="config-btn">
-                Configurar
-              </button>
-            </div>
-            <div class="config-card">
-              <h3>📑 Tipos de Publicación</h3>
-              <p>Gestionar tipos de publicación</p>
-              <button @click="showConfigModal = 'publication-types'" class="config-btn">
-                Configurar
-              </button>
-            </div>
-          </div>
-        </div>
+      <!-- Configuración -->
+      <ConfigComponent 
+        v-if="activeTab === 'config'" 
+        @show-success="handleShowSuccess"
+        @show-error="handleShowError"
+      />
       </main>
 
-      <!-- Modal de configuración -->
-      <div v-if="showConfigModal" class="modal-overlay" @click="closeConfigModal">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h3>Configurar {{ getConfigTitle(showConfigModal) }}</h3>
-            <button @click="closeConfigModal" class="close-btn">✕</button>
-          </div>
-          <div class="modal-body">
-            <!-- Países -->
-            <CountriesTable 
-              v-if="showConfigModal === 'countries'"
-              :items="configData.countries"
-              :loading="configLoading"
-              :currentPage="configPagination.currentPage"
-              :totalPages="configPagination.totalPages"
-              @create="handleConfigCreate('countries')"
-              @edit="handleConfigEdit('countries', $event)"
-              @delete="handleConfigDelete('countries', $event)"
-              @search="handleConfigSearch('countries', $event)"
-              @page-change="handleConfigPageChange($event)"
-            />
-            
-            <!-- Palabras Clave -->
-            <KeywordsTable 
-              v-if="showConfigModal === 'keywords'"
-              :items="configData.keywords"
-              :loading="configLoading"
-              :currentPage="configPagination.currentPage"
-              :totalPages="configPagination.totalPages"
-              @create="handleConfigCreate('keywords')"
-              @edit="handleConfigEdit('keywords', $event)"
-              @delete="handleConfigDelete('keywords', $event)"
-              @search="handleConfigSearch('keywords', $event)"
-              @page-change="handleConfigPageChange($event)"
-            />
-            
-            <!-- Tipos de Publicación -->
-            <PublicationTypesTable 
-              v-if="showConfigModal === 'publication-types'"
-              :items="configData.publicationTypes"
-              :loading="configLoading"
-              :currentPage="configPagination.currentPage"
-              :totalPages="configPagination.totalPages"
-              @create="handleConfigCreate('publication-types')"
-              @edit="handleConfigEdit('publication-types', $event)"
-              @delete="handleConfigDelete('publication-types', $event)"
-              @search="handleConfigSearch('publication-types', $event)"
-              @page-change="handleConfigPageChange($event)"
-            />
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -172,9 +98,7 @@
 <script>
 import LoginComponent from './components/LoginComponent.vue'
 import PublicationsComponent from './components/PublicationCrud.vue'
-import CountriesTable from './components/CountriesTable.vue'
-import KeywordsTable from './components/KeywordsTable.vue'
-import PublicationTypesTable from './components/PublicationTypesTable.vue'
+import ConfigComponent from './components/ConfigComponent.vue'
 import api from './services/api'
 
 export default {
@@ -182,17 +106,13 @@ export default {
   components: {
     LoginComponent,
     PublicationsComponent,
-    CountriesTable,
-    KeywordsTable,
-    PublicationTypesTable
+    ConfigComponent
   },
   data() {
     return {
       isAuthenticated: false,
       currentUser: null,
       activeTab: 'publications',
-      showConfigModal: null,
-      configLoading: false,
       stats: {
         publications: 0,
         authors: 0,
@@ -200,15 +120,6 @@ export default {
         countries: 0
       },
       recentActivity: [],
-      configData: {
-        countries: [],
-        keywords: [],
-        publicationTypes: []
-      },
-      configPagination: {
-        currentPage: 1,
-        totalPages: 1
-      },
       tabs: [
         { id: 'dashboard', name: 'Dashboard', icon: '📊' },
         { id: 'publications', name: 'Publicaciones', icon: '📄' },
@@ -308,137 +219,7 @@ export default {
       } catch (error) {
         console.error('Error cargando actividad:', error)
       }
-    },
-    
-    async loadConfigData(type) {
-      this.configLoading = true
-      try {
-        let response
-        switch (type) {
-          case 'countries':
-            response = await api.getCountries()
-            this.configData.countries = response.data || []
-            break
-          case 'keywords':
-            response = await api.getKeywords()
-            this.configData.keywords = response.data || []
-            break
-          case 'publication-types':
-            response = await api.getPublicationTypes()
-            this.configData.publicationTypes = response.data || []
-            break
-        }
-      } catch (error) {
-        console.error(`Error cargando ${type}:`, error)
-      } finally {
-        this.configLoading = false
-      }
-    },
-    
-    getConfigTitle(modalType) {
-      const titles = {
-        'countries': 'Países',
-        'keywords': 'Palabras Clave',
-        'publication-types': 'Tipos de Publicación'
-      }
-      return titles[modalType] || 'Configuración'
-    },
-    
-    async closeConfigModal() {
-      this.showConfigModal = null
-      this.configPagination.currentPage = 1
-    },
-    
-    async handleConfigCreate(type) {
-  const name = prompt(`Ingrese el nombre del nuevo ${type}:`)
-  if (!name || !name.trim()) return
-
-  try {
-    switch (type) {
-      case 'countries':
-        await api.createCountry({ name })
-        break
-      case 'keywords':
-        await api.createKeyword({ name })
-        break
-      case 'publication-types':
-        await api.createPublicationType({ name })
-        break
-      default:
-        throw new Error(`Tipo desconocido: ${type}`)
-    }
-    await this.loadConfigData(type)
-  } catch (error) {
-    console.error(`Error creando ${type}:`, error)
-    alert('Error al crear el elemento')
-  }
-},
-
-    
-    async handleConfigEdit(type, item) {
-  const newName = prompt(`Editar nombre de ${type}:`, item.name)
-  if (!newName || !newName.trim()) return
-
-  try {
-    switch (type) {
-      case 'countries':
-        await api.updateCountry(item.id, { name: newName })
-        break
-      case 'keywords':
-        await api.updateKeyword(item.id, { name: newName })
-        break
-      case 'publication-types':
-        await api.updatePublicationType(item.id, { name: newName })
-        break
-      default:
-        throw new Error(`Tipo desconocido: ${type}`)
-    }
-    await this.loadConfigData(type)
-  } catch (error) {
-    console.error(`Error editando ${type}:`, error)
-    alert('Error al editar el elemento')
-  }
-},
-
-    
-    async handleConfigDelete(type, id) {
-      if (confirm('¿Estás seguro de que deseas eliminar este elemento?')) {
-        try {
-          switch (type) {
-            case 'countries':
-              await api.deleteCountry(id)
-              break
-            case 'keywords':
-              await api.deleteKeyword(id)
-              break
-            case 'publication-types':
-              await api.deletePublicationType(id)
-              break
-          }
-          await this.loadConfigData(type)
-        } catch (error) {
-          console.error(`Error eliminando ${type}:`, error)
-          alert('Error al eliminar el elemento')
-        }
-      }
-    },
-    
-    async handleConfigSearch(type, searchTerm) {
-  console.log(`Buscar en ${type}:`, searchTerm)
-  try {
-    await this.loadConfigData(type, { search: searchTerm })
-  } catch (error) {
-    console.error(`Error buscando en ${type}:`, error)
-    alert('Error al buscar')
-  }
-},
-
-    
-    async handleConfigPageChange(page) {
-      this.configPagination.currentPage = page
-      await this.loadConfigData(this.showConfigModal)
-    },
-    
+    },    
     formatDate(date) {
       return new Date(date).toLocaleDateString('es-ES', {
         day: '2-digit',
@@ -448,13 +229,7 @@ export default {
     }
   },
   
-  watch: {
-    showConfigModal(newValue) {
-      if (newValue) {
-        this.loadConfigData(newValue)
-      }
-    }
-  }
+ 
 }
 </script>
 
@@ -652,133 +427,8 @@ export default {
   padding: 2rem;
 }
 
-/* Config Section */
-.config-section h2 {
-  color: white;
-  margin-bottom: 2rem;
-  font-size: 2rem;
-  text-align: center;
-}
 
-.config-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
 
-.config-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  padding: 2rem;
-  border-radius: 15px;
-  text-align: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: transform 0.3s ease;
-}
-
-.config-card:hover {
-  transform: translateY(-5px);
-}
-
-.config-card h3 {
-  color: #4a5568;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-}
-
-.config-card p {
-  color: #718096;
-  margin-bottom: 1.5rem;
-}
-
-.config-btn {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea, #252e64);
-  color: white;
-  border: none;
-  border-radius: 25px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.config-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow: hidden;
-  animation: modalSlideIn 0.3s ease;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.modal-header {
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: linear-gradient(135deg, #667eea, #252e64);
-  color: white;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.3rem;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  transition: background 0.3s ease;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.modal-body {
-  padding: 2rem;
-  max-height: 70vh;
-  overflow-y: auto;
-}
 
 /* Responsive */
 @media (max-width: 768px) {
