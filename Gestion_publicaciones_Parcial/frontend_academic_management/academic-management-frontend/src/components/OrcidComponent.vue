@@ -265,39 +265,50 @@ export default {
     },
 
     async addSelectedWorks() {
-      if (this.selectedWorks.length === 0) return
+  if (this.selectedWorks.length === 0) return;
 
-      this.adding = true
+  this.adding = true;
 
-      try {
-        const promises = this.selectedWorks.map(work => {
-          const publicationData = {
-            title: work.title,
-            type: work.type,
-            year: work.year,
-            journal: work.journal,
-            doi: work.doi,
-            url: work.url,
-            external_id: work.external_id,
-            source: 'ORCID',
-            orcid_id: this.researcher.orcid_id
-          }
-          return api.createItem('publications', publicationData)
-        })
+  try {
+    const TYPE_ID_MAP = {
+      'journal-article': 1,
+      'book-chapter': 1,
+      'conference-paper': 2,
+      'report': 1,
+      'software': 1
+    };
 
-        await Promise.all(promises)
-        
-        this.showMessage(`${this.selectedWorks.length} publicaciones añadidas exitosamente`, 'success')
-        this.selectedWorks = []
-        this.$emit('publications-added', this.selectedWorks.length)
-        
-      } catch (error) {
-        console.error('Error al añadir publicaciones:', error)
-        this.showMessage('Error al añadir algunas publicaciones', 'error')
-      } finally {
-        this.adding = false
-      }
-    },
+    const promises = this.selectedWorks.map(work => {
+      const publicationData = {
+        title: work.title,
+        publication_type_id: TYPE_ID_MAP[work.type] || 1,
+        year: work.year,
+        journal: work.journal,
+        doi: work.doi,
+        url: work.url,
+        external_id: work.external_id,
+        source: 'ORCID',
+        orcid_id: this.researcher.orcid_id
+      };
+
+      console.log('Publicación a enviar:', publicationData);
+
+      return api.createItem('publications', publicationData);
+    });
+
+    await Promise.all(promises);
+    
+    this.showMessage(`${this.selectedWorks.length} publicaciones añadidas exitosamente`, 'success');
+    this.selectedWorks = [];
+    this.$emit('publications-added', this.selectedWorks.length);
+    
+  } catch (error) {
+    console.error('Error al añadir publicaciones:', error);
+    this.showMessage('Error al añadir algunas publicaciones', 'error');
+  } finally {
+    this.adding = false;
+  }
+},
 
     showMessage(text, type = 'info') {
       this.message = text
