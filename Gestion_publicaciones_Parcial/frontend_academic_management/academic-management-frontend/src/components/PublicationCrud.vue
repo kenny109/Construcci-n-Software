@@ -1375,4 +1375,42 @@ export default {
   background-color: #6c757d;
   cursor: not-allowed;
 }
+.publication-details {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.publication-details p {
+  margin: 8px 0;
+}
+
+.publication-details strong {
+  display: inline-block;
+  width: 120px;
+  font-weight: 600;
+  color: #333;
+}
+
+@media (max-width: 768px) {
+  .publication-details {
+    padding: 15px;
+    font-size: 14px;
+  }
+
+  .publication-details strong {
+    width: auto;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .publication-details p {
+    margin: 12px 0;
+  }
+}
+
 </style>
