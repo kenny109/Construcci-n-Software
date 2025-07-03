@@ -71,9 +71,8 @@ def create_publication():
             'data': publication.to_dict()
         }), 201
     except Exception as e:
-    db.session.rollback()
-    traceback.print_exc()  # Esto lo verás en logs
-    return jsonify({'error': str(e)}), 400
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
 
 @bp.route('/', methods=['GET'])
 @jwt_required()
