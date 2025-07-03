@@ -27,7 +27,7 @@
         
         <div class="nav-user">
           <span class="user-info">
-            👤 {{ currentUser?.first_name}}
+            👤 {{ currentUser?.first_name || 'Usuario'}}
           </span>
           <button @click="handleLogout" class="logout-btn">
             🚪 Cerrar Sesión
@@ -350,14 +350,56 @@ export default {
     },
     
     async handleConfigCreate(type) {
-      console.log(`Crear nuevo ${type}`)
-      // Aquí implementarías la lógica de creación
-    },
+  const name = prompt(`Ingrese el nombre del nuevo ${type}:`)
+  if (!name || !name.trim()) return
+
+  try {
+    switch (type) {
+      case 'countries':
+        await api.createCountry({ name })
+        break
+      case 'keywords':
+        await api.createKeyword({ name })
+        break
+      case 'publication-types':
+        await api.createPublicationType({ name })
+        break
+      default:
+        throw new Error(`Tipo desconocido: ${type}`)
+    }
+    await this.loadConfigData(type)
+  } catch (error) {
+    console.error(`Error creando ${type}:`, error)
+    alert('Error al crear el elemento')
+  }
+},
+
     
     async handleConfigEdit(type, item) {
-      console.log(`Editar ${type}:`, item)
-      // Aquí implementarías la lógica de edición
-    },
+  const newName = prompt(`Editar nombre de ${type}:`, item.name)
+  if (!newName || !newName.trim()) return
+
+  try {
+    switch (type) {
+      case 'countries':
+        await api.updateCountry(item.id, { name: newName })
+        break
+      case 'keywords':
+        await api.updateKeyword(item.id, { name: newName })
+        break
+      case 'publication-types':
+        await api.updatePublicationType(item.id, { name: newName })
+        break
+      default:
+        throw new Error(`Tipo desconocido: ${type}`)
+    }
+    await this.loadConfigData(type)
+  } catch (error) {
+    console.error(`Error editando ${type}:`, error)
+    alert('Error al editar el elemento')
+  }
+},
+
     
     async handleConfigDelete(type, id) {
       if (confirm('¿Estás seguro de que deseas eliminar este elemento?')) {
@@ -382,10 +424,15 @@ export default {
     },
     
     async handleConfigSearch(type, searchTerm) {
-      console.log(`Buscar en ${type}:`, searchTerm)
-      // Aquí implementarías la lógica de búsqueda
-      await this.loadConfigData(type)
-    },
+  console.log(`Buscar en ${type}:`, searchTerm)
+  try {
+    await this.loadConfigData(type, { search: searchTerm })
+  } catch (error) {
+    console.error(`Error buscando en ${type}:`, error)
+    alert('Error al buscar')
+  }
+},
+
     
     async handleConfigPageChange(page) {
       this.configPagination.currentPage = page
