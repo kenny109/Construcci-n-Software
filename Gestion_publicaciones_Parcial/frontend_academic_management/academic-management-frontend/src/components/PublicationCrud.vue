@@ -717,7 +717,7 @@ export default {
       if (this.form.publication_date) {
         const pubDate = new Date(this.form.publication_date)
         const today = new Date()
-        today.setHours(24, 60, 60, 000) // Final del día actual
+        today.setHours(23, 59, 59, 999) // Final del día actual
         
         if (pubDate > today) {
           this.error = 'Error: La fecha de publicación no puede ser futura'
