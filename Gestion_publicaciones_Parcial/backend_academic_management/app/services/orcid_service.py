@@ -23,7 +23,7 @@ class OrcidService:
     @classmethod
     def get_researcher_info(cls, orcid_id):
         """Obtiene información básica de un investigador por su ORCID ID"""
-        url = f"{cls.BASE_URL}/{orcid_id}"
+        url = f"{cls.BASE_URL}/{orcid_id}/person"
         try:
             response = requests.get(url, headers=cls.HEADERS, timeout=10)
             
