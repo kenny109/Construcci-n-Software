@@ -211,11 +211,11 @@ export default {
       try {
         const response = await api.getOrcidWorks(this.researcher.orcid_id)
         
-        if (response.data.success) {
-          this.works = response.data.data
+        if (response.success) {
+          this.works = response.data
           this.showMessage(`${this.works.length} publicaciones encontradas`, 'success')
         } else {
-          this.showMessage(response.data.message || 'No se pudieron cargar las publicaciones', 'error')
+          this.showMessage(response.message || 'No se pudieron cargar las publicaciones', 'error')
         }
       } catch (error) {
         console.error('Error al cargar publicaciones:', error)
@@ -233,11 +233,11 @@ export default {
       try {
         const response = await api.syncOrcidResearcher(this.researcher.orcid_id)
         
-        if (response.data.success) {
+        if (response.success) {
           this.showMessage('Datos del investigador sincronizados exitosamente', 'success')
           this.$emit('researcher-synced', this.researcher)
         } else {
-          this.showMessage(response.data.message || 'Error al sincronizar los datos', 'error')
+          this.showMessage(response.message || 'Error al sincronizar los datos', 'error')
         }
       } catch (error) {
         console.error('Error al sincronizar:', error)
