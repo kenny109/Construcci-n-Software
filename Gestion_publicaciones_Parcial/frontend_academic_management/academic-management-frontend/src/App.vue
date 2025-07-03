@@ -27,7 +27,7 @@
         
         <div class="nav-user">
           <span class="user-info">
-            👤 {{ userData.user?.first_name}}
+            👤 {{ currentUser?.first_name}}
           </span>
           <button @click="handleLogout" class="logout-btn">
             🚪 Cerrar Sesión
