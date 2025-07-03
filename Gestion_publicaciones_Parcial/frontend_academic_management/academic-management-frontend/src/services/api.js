@@ -261,7 +261,27 @@ this.baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
   const response = await axios.post(`/publication-authors/${publicationId}/authors`, authorData)
   return response.data
 }
+// Rutas ORCID (basadas en el blueprint proporcionado)
 
+// Verificar el servicio ORCID
+export const checkOrcidService = () => {
+  return api.get('/orcid/')
+}
+
+// Buscar información de un investigador por ORCID ID
+export const getOrcidResearcher = (orcidId) => {
+  return api.get(`/orcid/researcher/${orcidId}`)
+}
+
+// Obtener las publicaciones de un investigador
+export const getOrcidWorks = (orcidId) => {
+  return api.get(`/orcid/researcher/${orcidId}/works`)
+}
+
+// Sincronizar datos del investigador
+export const syncOrcidResearcher = (orcidId) => {
+  return api.post(`/orcid/sync/${orcidId}`)
+}
 }
 
 export default new ApiService()
