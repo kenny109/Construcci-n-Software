@@ -262,22 +262,26 @@ this.baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
   return response.data
   }
 
-    // ORCID methods (añadir después de los métodos de publications)
+      // ORCID methods
   async checkOrcidService() {
-    return this.get('/orcid/')
+    return this.getItems('orcid')
   }
 
   async getOrcidResearcher(orcidId) {
-    return this.get(`/orcid/researcher/${orcidId}`)
+    const response = await axios.get(`/orcid/researcher/${orcidId}`)
+    return response.data
   }
 
   async getOrcidWorks(orcidId) {
-    return this.get(`/orcid/researcher/${orcidId}/works`)
+    const response = await axios.get(`/orcid/researcher/${orcidId}/works`)
+    return response.data
   }
 
   async syncOrcidResearcher(orcidId) {
-    return this.post(`/orcid/sync/${orcidId}`)
+    const response = await axios.post(`/orcid/sync/${orcidId}`)
+    return response.data
   }
+
 
 }
 
