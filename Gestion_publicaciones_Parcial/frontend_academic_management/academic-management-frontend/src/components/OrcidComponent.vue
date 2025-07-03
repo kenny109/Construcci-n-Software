@@ -270,18 +270,10 @@ export default {
   this.adding = true;
 
   try {
-    const TYPE_ID_MAP = {
-      'journal-article': 1,
-      'book-chapter': 1,
-      'conference-paper': 2,
-      'report': 1,
-      'software': 1
-    };
-
     const promises = this.selectedWorks.map(work => {
       const publicationData = {
         title: work.title,
-        publication_type_id: TYPE_ID_MAP[work.type] || 1,
+        type: work.type, // ahora se manda 'type'
         year: work.year,
         journal: work.journal,
         doi: work.doi,

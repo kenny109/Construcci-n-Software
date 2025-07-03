@@ -10,20 +10,41 @@ bp = Blueprint('publications', __name__)
 @jwt_required()
 def create_publication():
     data = request.get_json()
-    
-    # Verificar campos obligatorios
-    required_fields = ['title', 'publication_type_id']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({'error': f'Campo {field} es obligatorio'}), 400
-    
+
+    # Verificar campo obligatorio de título
+    if 'title' not in data:
+        return jsonify({'error': 'Campo title es obligatorio'}), 400
+
+    # Validar o crear PublicationType dinámicamente
+    publication_type_id = data.get('publication_type_id')
+    type_str = data.get('type')
+
+    if not publication_type_id and not type_str:
+        return jsonify({'error': 'Debe especificar publication_type_id o type'}), 400
+
+    if not publication_type_id:
+        # Buscar o crear PublicationType por nombre
+        ptype = PublicationType.query.filter_by(name=type_str).first()
+        if not ptype:
+            ptype = PublicationType(
+                name=type_str,
+                description='Importado automáticamente desde ORCID'
+            )
+            db.session.add(ptype)
+            db.session.commit()
+        publication_type_id = str(ptype.id)
+
+    # Asegurar que el campo se use como ID
+    data['publication_type_id'] = publication_type_id
+    data.pop('type', None)
+
     try:
-        # Crear la publicación, incluyendo el campo external_id si se proporciona
+        # Crear la publicación
         publication = Publication.create(**{
-            k: v for k, v in data.items() 
+            k: v for k, v in data.items()
             if k not in ['authors', 'keywords']
         })
-        
+
         # Procesar autores si se proporcionan
         if 'authors' in data and isinstance(data['authors'], list):
             for idx, author_data in enumerate(data['authors']):
@@ -34,7 +55,7 @@ def create_publication():
                         is_corresponding=author_data.get('is_corresponding', False),
                         author_order=author_data.get('author_order', idx + 1)
                     )
-        
+
         # Procesar keywords si se proporcionan
         if 'keywords' in data and isinstance(data['keywords'], list):
             for keyword_id in data['keywords']:
@@ -42,7 +63,7 @@ def create_publication():
                     publication_id=publication.id,
                     keyword_id=uuid.UUID(keyword_id)
                 )
-        
+
         return jsonify({
             'message': 'Publicación creada exitosamente',
             'data': publication.to_dict()
