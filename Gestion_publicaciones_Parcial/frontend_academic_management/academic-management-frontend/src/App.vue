@@ -27,7 +27,7 @@
         
         <div class="nav-user">
           <span class="user-info">
-            👤 {{ currentUser?.first_name || 'Usuario' }}
+            👤 {{ currentUser?.first_name}}
           </span>
           <button @click="handleLogout" class="logout-btn">
             🚪 Cerrar Sesión
@@ -412,67 +412,50 @@ export default {
 </script>
 
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-#app {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #252e64 100%);
-}
-
 .app-container {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  background: #f8f9fa;
 }
 
-/* Navbar */
 .navbar {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: white;
   padding: 1rem 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  align-items: center;
 }
 
 .nav-brand h1 {
-  color: #4a5568;
+  margin: 0;
+  color: #2c3e50;
   font-size: 1.5rem;
-  font-weight: 700;
 }
 
 .nav-menu {
   display: flex;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
 .nav-btn {
-  padding: 0.75rem 1.5rem;
   background: transparent;
   border: 2px solid transparent;
-  border-radius: 25px;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  color: #4a5568;
   transition: all 0.3s ease;
+  color: #6c757d;
 }
 
 .nav-btn:hover {
-  background: rgba(102, 126, 234, 0.1);
-  border-color: rgba(102, 126, 234, 0.3);
+  background: #e9ecef;
+  color: #495057;
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, #667eea, #252e64);
+  background: #007bff;
   color: white;
-  border-color: transparent;
+  border-color: #007bff;
 }
 
 .nav-user {
@@ -482,39 +465,33 @@ export default {
 }
 
 .user-info {
-  color: #4a5568;
+  color: #6c757d;
   font-weight: 500;
 }
 
 .logout-btn {
-  padding: 0.5rem 1rem;
-  background: #e53e3e;
+  background: #dc3545;
   color: white;
   border: none;
-  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  transition: background 0.3s ease;
 }
 
 .logout-btn:hover {
-  background: #c53030;
-  transform: translateY(-1px);
+  background: #c82333;
 }
 
-/* Main Content */
 .main-content {
-  flex: 1;
   padding: 2rem;
-  overflow-y: auto;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-/* Dashboard */
 .dashboard h2 {
-  color: white;
+  color: #2c3e50;
   margin-bottom: 2rem;
-  font-size: 2rem;
-  text-align: center;
 }
 
 .stats-grid {
@@ -525,13 +502,11 @@ export default {
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: white;
   padding: 2rem;
-  border-radius: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   text-align: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
   transition: transform 0.3s ease;
 }
 
@@ -540,48 +515,46 @@ export default {
 }
 
 .stat-card h3 {
-  color: #4a5568;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+  color: #6c757d;
+  font-size: 1rem;
 }
 
 .stat-number {
   font-size: 3rem;
   font-weight: bold;
-  color: #667eea;
+  color: #007bff;
   margin: 0;
 }
 
-/* Recent Activity */
 .recent-activity {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: white;
   padding: 2rem;
-  border-radius: 15px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .recent-activity h3 {
-  color: #4a5568;
+  margin-top: 0;
+  color: #2c3e50;
   margin-bottom: 1.5rem;
-  font-size: 1.3rem;
 }
 
 .activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .activity-item {
   display: flex;
   align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #e9ecef;
   gap: 1rem;
-  padding: 1rem;
-  background: rgba(102, 126, 234, 0.05);
-  border-radius: 10px;
-  border-left: 4px solid #667eea;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
 }
 
 .activity-icon {
@@ -590,43 +563,38 @@ export default {
 
 .activity-text {
   flex: 1;
-  color: #4a5568;
+  color: #495057;
 }
 
 .activity-time {
-  color: #718096;
+  color: #6c757d;
   font-size: 0.9rem;
 }
 
 .no-data {
   text-align: center;
-  color: #718096;
+  color: #6c757d;
   font-style: italic;
   padding: 2rem;
 }
 
-/* Config Section */
 .config-section h2 {
-  color: white;
+  color: #2c3e50;
   margin-bottom: 2rem;
-  font-size: 2rem;
-  text-align: center;
 }
 
 .config-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .config-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: white;
   padding: 2rem;
-  border-radius: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   text-align: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
   transition: transform 0.3s ease;
 }
 
@@ -635,41 +603,39 @@ export default {
 }
 
 .config-card h3 {
-  color: #4a5568;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1.5rem;
 }
 
 .config-card p {
-  color: #718096;
-  margin-bottom: 1.5rem;
+  color: #6c757d;
+  margin-bottom: 2rem;
+  line-height: 1.5;
 }
 
 .config-btn {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea, #252e64);
+  background: #007bff;
   color: white;
   border: none;
-  border-radius: 25px;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-size: 1rem;
+  transition: background 0.3s ease;
 }
 
 .config-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  background: #0056b3;
 }
 
-/* Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px);
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -678,85 +644,47 @@ export default {
 
 .modal-content {
   background: white;
-  border-radius: 15px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
   max-width: 90vw;
   max-height: 90vh;
   overflow: hidden;
-  animation: modalSlideIn 0.3s ease;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+  width: 800px;
 }
 
 .modal-header {
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #667eea, #252e64);
-  color: white;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.3rem;
+  color: #2c3e50;
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: white;
   font-size: 1.5rem;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
+  color: #6c757d;
+  padding: 0.25rem;
+  border-radius: 4px;
   transition: background 0.3s ease;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: #e9ecef;
+  color: #495057;
 }
 
 .modal-body {
   padding: 2rem;
   max-height: 70vh;
   overflow-y: auto;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .navbar {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-  }
-
-  .nav-menu {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .main-content {
-    padding: 1rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .nav-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-  }
 }
 </style>
