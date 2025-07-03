@@ -83,6 +83,13 @@
           v-if="activeTab === 'publications'" 
           @update-stats="loadStats"
         />
+        <!-- ORCID -->
+<OrcidComponent 
+  v-if="activeTab === 'orcid'"
+  :current-user="currentUser"
+  @researcher-synced="handleResearcherSynced"
+  @publications-added="handlePublicationsAdded"
+/>
       <!-- Configuración -->
       <ConfigComponent 
         v-if="activeTab === 'config'" 
@@ -99,6 +106,7 @@
 import LoginComponent from './components/LoginComponent.vue'
 import PublicationsComponent from './components/PublicationCrud.vue'
 import ConfigComponent from './components/ConfigComponent.vue'
+import OrcidComponent from './components/OrcidComponent.vue'
 import api from './services/api'
 
 export default {
@@ -106,7 +114,8 @@ export default {
   components: {
     LoginComponent,
     PublicationsComponent,
-    ConfigComponent
+    ConfigComponent,
+    OrcidComponent
   },
   data() {
     return {
@@ -123,19 +132,22 @@ export default {
       tabs: [
         { id: 'dashboard', name: 'Dashboard', icon: '📊' },
         { id: 'publications', name: 'Publicaciones', icon: '📄' },
+         { id: 'orcid', name: 'ORCID', icon: '🔬' },
         { id: 'config', name: 'Configuración', icon: '⚙️' }
-      ]
+      ],
+      
     }
   },
   computed: {
-    availableTabs() {
-      if (this.currentUser?.role === 'admin') {
-        return this.tabs
-      } else {
-        return this.tabs.filter(tab => tab.id !== 'dashboard')
-      }
+  availableTabs() {
+    if (this.currentUser?.role === 'admin') {
+      return this.tabs
+    } else {
+      // Los usuarios normales pueden ver publicaciones y ORCID
+      return this.tabs.filter(tab => !['dashboard', 'config'].includes(tab.id))
     }
-  },
+  }
+},
   async mounted() {
     this.checkAuthentication()
     if (this.isAuthenticated) {
@@ -229,7 +241,29 @@ export default {
     }
   },
   
- 
+ handleResearcherSynced(researcher) {
+  console.log('Investigador sincronizado:', researcher)
+  // Aquí puedes manejar la sincronización del investigador
+  // Por ejemplo, recargar estadísticas si es admin
+  if (this.currentUser?.role === 'admin') {
+    this.loadStats()
+  }
+},
+
+handlePublicationsAdded(count) {
+  console.log(`${count} publicaciones añadidas desde ORCID`)
+  // Recargar estadísticas si es admin
+  if (this.currentUser?.role === 'admin') {
+    this.loadStats()
+  }
+  // Mostrar mensaje de éxito
+  this.showMessage(`${count} publicaciones añadidas exitosamente desde ORCID`, 'success')
+},
+
+showMessage(text, type = 'info') {
+  // Puedes implementar un sistema de notificaciones aquí
+  console.log(`${type.toUpperCase()}: ${text}`)
+}
 }
 </script>
 

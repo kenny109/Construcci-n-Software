@@ -1381,36 +1381,39 @@ export default {
   border-radius: 6px;
   font-size: 16px;
   line-height: 1.6;
-  max-width: 800px;
-  margin: 0 auto;
+  max-width: 100%;
 }
 
 .publication-details p {
   margin: 8px 0;
+  word-break: break-word;
 }
 
 .publication-details strong {
   display: inline-block;
-  width: 120px;
+  min-width: 100px;
   font-weight: 600;
   color: #333;
 }
 
+/* RESPONSIVE para móviles */
 @media (max-width: 768px) {
   .publication-details {
-    padding: 15px;
+    padding: 12px;
     font-size: 14px;
+    line-height: 1.4;
   }
 
   .publication-details strong {
-    width: auto;
     display: block;
+    min-width: auto;
     margin-bottom: 4px;
   }
 
   .publication-details p {
-    margin: 12px 0;
+    margin: 10px 0;
   }
 }
+
 
 </style>
