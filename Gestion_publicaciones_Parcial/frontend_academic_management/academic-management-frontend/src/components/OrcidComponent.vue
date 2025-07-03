@@ -264,7 +264,7 @@ export default {
       }
     },
 
-    async addSelectedWorks() {
+ async addSelectedWorks() {
   if (this.selectedWorks.length === 0) return;
 
   this.adding = true;
@@ -273,14 +273,19 @@ export default {
     const promises = this.selectedWorks.map(work => {
       const publicationData = {
         title: work.title,
-        type: work.type, // ahora se manda 'type'
+        type: work.type,
         year: work.year,
         journal: work.journal,
         doi: work.doi,
         url: work.url,
         external_id: work.external_id,
         source: 'ORCID',
-        orcid_id: this.researcher.orcid_id
+        // Añadir el autor con su ORCID ID
+        authors: [{
+          orcid_id: this.researcher.orcid_id,
+          is_corresponding: true, // o false según corresponda
+          author_order: 1
+        }]
       };
 
       console.log('Publicación a enviar:', publicationData);

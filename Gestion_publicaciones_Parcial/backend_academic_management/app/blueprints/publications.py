@@ -31,10 +31,9 @@ def create_publication():
                 description=f'Tipo de publicación importado automáticamente: {type_name}'
             )
             db.session.add(publication_type_obj)
-            db.session.commit()
+            db.session.flush()
 
         publication_type_id = publication_type_obj.id
-
 
     # Asegurar que el campo se use como ID
     data['publication_type_id'] = publication_type_id
@@ -47,13 +46,34 @@ def create_publication():
             if k not in ['authors', 'keywords']
         })
 
-        # Procesar autores si se proporcionan
+        # Procesar autores
         if 'authors' in data and isinstance(data['authors'], list):
             for idx, author_data in enumerate(data['authors']):
+                author = None
+                
+                # Si viene author_id, usarlo directamente
                 if isinstance(author_data, dict) and 'author_id' in author_data:
+                    author_id = uuid.UUID(author_data['author_id'])
+                    author = Author.query.get(author_id)
+                
+                # Si viene orcid_id, buscar o crear autor
+                elif isinstance(author_data, dict) and 'orcid_id' in author_data:
+                    orcid_id = author_data['orcid_id']
+                    author = Author.query.filter_by(orcid_id=orcid_id).first()
+                    
+                    if not author:
+                        # Crear autor si no existe
+                        author = Author.create(
+                            orcid_id=orcid_id,
+                            # Añadir otros campos si los tienes disponibles
+                            #name=author_data.get('name', ''),
+                            #email=author_data.get('email', ''),
+                        )
+                
+                if author:
                     PublicationAuthor.create(
                         publication_id=publication.id,
-                        author_id=uuid.UUID(author_data['author_id']),
+                        author_id=author.id,
                         is_corresponding=author_data.get('is_corresponding', False),
                         author_order=author_data.get('author_order', idx + 1)
                     )
@@ -66,13 +86,22 @@ def create_publication():
                     keyword_id=uuid.UUID(keyword_id)
                 )
 
+        db.session.commit()
+
         return jsonify({
             'message': 'Publicación creada exitosamente',
             'data': publication.to_dict()
         }), 201
+        
     except Exception as e:
+        print(f"=== ERROR DETALLADO ===")
+        print(f"Error: {str(e)}")
+        print(f"Tipo de error: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 500
+
 
 @bp.route('/', methods=['GET'])
 @jwt_required()
