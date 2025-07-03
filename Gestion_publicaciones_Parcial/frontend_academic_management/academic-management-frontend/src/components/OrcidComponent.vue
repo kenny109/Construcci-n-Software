@@ -184,20 +184,21 @@ export default {
       this.selectedWorks = []
 
       try {
-        const response = await api.getOrcidResearcher(this.orcidId)
-        
-        if (response.data.success) {
-          this.researcher = response.data.data
-          this.showMessage('Información del investigador cargada exitosamente', 'success')
-        } else {
-          this.showMessage(response.data.message || 'No se pudo obtener la información del investigador', 'error')
-        }
-      } catch (error) {
-        console.error('Error al buscar investigador:', error)
-        this.showMessage('Error al buscar el investigador. Verifica el ORCID ID.', 'error')
-      } finally {
-        this.loading = false
-      }
+  const response = await api.getOrcidResearcher(this.orcidId)
+
+  if (response.success) {
+    this.researcher = response.data
+    this.showMessage('Información del investigador cargada exitosamente', 'success')
+  } else {
+    this.showMessage(response.message || 'No se pudo obtener la información del investigador', 'error')
+  }
+} catch (error) {
+  console.error('Error al buscar investigador:', error)
+  this.showMessage('Error al buscar el investigador. Verifica el ORCID ID.', 'error')
+} finally {
+  this.loading = false
+}
+
     },
 
     async loadWorks() {
