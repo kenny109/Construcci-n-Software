@@ -1407,11 +1407,11 @@ export default {
   .publication-details strong {
     display: block;
     min-width: auto;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
   }
 
   .publication-details p {
-    margin: 8px 0;
+    margin: 10px 0;
   }
 }
 
