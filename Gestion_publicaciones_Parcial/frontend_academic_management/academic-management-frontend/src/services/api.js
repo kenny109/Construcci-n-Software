@@ -265,15 +265,15 @@ this.baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
     // ORCID methods (añadir después de los métodos de publications)
   async checkOrcidService() {
     return this.get('/orcid/')
-  },
+  }
 
   async getOrcidResearcher(orcidId) {
     return this.get(`/orcid/researcher/${orcidId}`)
-  },
+  }
 
   async getOrcidWorks(orcidId) {
     return this.get(`/orcid/researcher/${orcidId}/works`)
-  },
+  }
 
   async syncOrcidResearcher(orcidId) {
     return this.post(`/orcid/sync/${orcidId}`)
