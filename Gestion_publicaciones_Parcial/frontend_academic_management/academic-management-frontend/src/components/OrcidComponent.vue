@@ -184,7 +184,7 @@ export default {
       this.selectedWorks = []
 
       try {
-        const response = await api.get(`/orcid/researcher/${this.orcidId}`)
+        const response = await api.getOrcidResearcher(this.orcidId)
         
         if (response.data.success) {
           this.researcher = response.data.data
@@ -208,7 +208,7 @@ export default {
       this.selectedWorks = []
 
       try {
-        const response = await api.get(`/orcid/researcher/${this.researcher.orcid_id}/works`)
+        const response = await api.getOrcidWorks(this.researcher.orcid_id)
         
         if (response.data.success) {
           this.works = response.data.data
@@ -230,7 +230,7 @@ export default {
       this.syncing = true
 
       try {
-        const response = await api.post(`/orcid/sync/${this.researcher.orcid_id}`)
+        const response = await api.syncOrcidResearcher(this.researcher.orcid_id)
         
         if (response.data.success) {
           this.showMessage('Datos del investigador sincronizados exitosamente', 'success')
@@ -281,7 +281,7 @@ export default {
             source: 'ORCID',
             orcid_id: this.researcher.orcid_id
           }
-          return api.post('/publications', publicationData)
+          return api.createItem('publications', publicationData)
         })
 
         await Promise.all(promises)
