@@ -1411,7 +1411,7 @@ export default {
   }
 
   .publication-details p {
-    margin: 10px 0;
+    margin: 8px 0;
   }
 }
 
