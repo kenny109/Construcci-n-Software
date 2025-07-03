@@ -17,22 +17,24 @@ def create_publication():
 
     # Validar o crear PublicationType dinámicamente
     publication_type_id = data.get('publication_type_id')
-    type_str = data.get('type')
-
-    if not publication_type_id and not type_str:
-        return jsonify({'error': 'Debe especificar publication_type_id o type'}), 400
+    publication_type_obj = None
 
     if not publication_type_id:
-        # Buscar o crear PublicationType por nombre
-        ptype = PublicationType.query.filter_by(name=type_str).first()
-        if not ptype:
-            ptype = PublicationType(
-                name=type_str,
-                description='Importado automáticamente desde ORCID'
+        type_name = data.get('type')
+        if not type_name:
+            return jsonify({'error': 'Debe proporcionar publication_type_id o type'}), 400
+
+        publication_type_obj = PublicationType.query.filter_by(name=type_name).first()
+        if not publication_type_obj:
+            publication_type_obj = PublicationType(
+                name=type_name,
+                description=f'Tipo de publicación importado automáticamente: {type_name}'
             )
-            db.session.add(ptype)
+            db.session.add(publication_type_obj)
             db.session.commit()
-        publication_type_id = str(ptype.id)
+
+        publication_type_id = publication_type_obj.id
+
 
     # Asegurar que el campo se use como ID
     data['publication_type_id'] = publication_type_id
@@ -69,8 +71,9 @@ def create_publication():
             'data': publication.to_dict()
         }), 201
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 400
+    db.session.rollback()
+    traceback.print_exc()  # Esto lo verás en logs
+    return jsonify({'error': str(e)}), 400
 
 @bp.route('/', methods=['GET'])
 @jwt_required()
