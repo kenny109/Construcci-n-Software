@@ -56,7 +56,15 @@
           <p><strong>Tipo:</strong> {{ getPublicationTypeName(publication.publication_type_id) }}</p>
           <p v-if="publication.journal_id"><strong>Revista:</strong> {{ getJournalName(publication.journal_id) }}</p>
           <p v-if="publication.conference_id"><strong>Conferencia:</strong> {{ getConferenceName(publication.conference_id) }}</p>
-          <p><strong>Citas:</strong> {{ publication.citation_count || 0 }}</p>
+          <p><strong>Autores:</strong>
+  <span v-if="publication.authors && publication.authors.length > 0">
+    <span v-for="(author, index) in publication.authors" :key="author.id">
+      {{ author.first_name }} {{ author.last_name }}<span v-if="index < publication.authors.length - 1">, </span>
+    </span>
+  </span>
+  <span v-else>No hay autores</span>
+</p>
+
         </div>
         
         <div v-if="publication.abstract" class="publication-abstract">
@@ -177,7 +185,6 @@
                   >
                   <button type="button" @click="createPublicationType" class="btn-add">+</button>
                 </div>
-                <textarea v-model="newPublicationType.description" placeholder="Descripción (opcional)" rows="2"></textarea>
               </div>
             </div>
           </div>
@@ -710,7 +717,7 @@ export default {
       if (this.form.publication_date) {
         const pubDate = new Date(this.form.publication_date)
         const today = new Date()
-        today.setHours(23, 59, 59, 999) // Final del día actual
+        today.setHours(24, 60, 60, 000) // Final del día actual
         
         if (pubDate > today) {
           this.error = 'Error: La fecha de publicación no puede ser futura'
