@@ -362,3 +362,90 @@ def _get_or_create_conference(conference_name, year=None):
     except Exception as e:
         print(f"Error creating conference: {str(e)}")
         return None
+
+        
+@bp.route('/fetch-from-orcid', methods=['POST'])
+@jwt_required()
+def fetch_from_orcid():
+    """
+    Obtiene datos de un autor desde ORCID y lo registra o actualiza en la base de datos.
+    """
+    data = request.get_json()
+
+    if not data or not data.get('orcid_id'):
+        return jsonify({'error': 'Se requiere el ORCID ID'}), 400
+
+    orcid_id = data['orcid_id']
+
+    try:
+        headers = {'Accept': 'application/json'}
+
+        # Obtener datos del perfil
+        response = requests.get(
+            f'https://pub.orcid.org/v3.0/{orcid_id}/person',
+            headers=headers
+        )
+
+        if response.status_code != 200:
+            return jsonify({'error': f'Error al obtener datos de ORCID: {response.text}'}), 400
+
+        profile_data = response.json() or {}
+
+        # Extraer nombre
+        name_data = profile_data.get('name') or {}
+        given_names = name_data.get('given-names') or {}
+        family_name = name_data.get('family-name') or {}
+
+        first_name = given_names.get('value', '')
+        last_name = family_name.get('value', '')
+
+        # Extraer email
+        emails_data = profile_data.get('emails') or {}
+        email_list = emails_data.get('email') or []
+        email = None
+        if isinstance(email_list, list) and len(email_list) > 0:
+            email = email_list[0].get('email')
+            if email == '':
+                email = None
+
+        # Extraer afiliación
+        affiliation = None
+        if 'employments' in profile_data:
+            affiliation_list = profile_data.get('employments', {}).get('employment-summary', [])
+            if affiliation_list:
+                affiliation = affiliation_list[0].get('organization', {}).get('name')
+
+        # Verificar si el autor ya existe
+        existing_author = Author.query.filter_by(orcid_id=orcid_id).first()
+
+        if existing_author:
+            # Actualizar datos
+            author = Author.update(
+                existing_author.id,
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                institution=affiliation
+            )
+            message = 'Autor actualizado correctamente'
+        else:
+            # Crear nuevo autor
+            author = Author.create(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                institution=affiliation,
+                orcid_id=orcid_id
+            )
+            message = 'Autor creado correctamente'
+
+        return jsonify({
+            'success': True,
+            'message': message,
+            'author': author.to_dict()
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Error al procesar datos de ORCID: {str(e)}'}), 500

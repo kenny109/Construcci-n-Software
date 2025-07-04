@@ -65,6 +65,16 @@
             <span v-else>🔄</span>
             {{ syncing ? 'Sincronizando...' : 'Sincronizar Todo' }}
           </button>
+          <button 
+  @click="addAuthorFromOrcid"
+  :disabled="syncing"
+  class="action-btn add-author-btn"
+>
+  <span v-if="syncing">👤⏳</span>
+  <span v-else>👤➕</span>
+  {{ syncing ? 'Añadiendo...' : 'Añadir como Autor' }}
+</button>
+
         </div>
       </div>
     </div>
@@ -297,6 +307,34 @@ export default {
         this.syncing = false
       }
     },
+async addAuthorFromOrcid() {
+  if (!this.researcher) {
+    this.showMessage('No hay datos del investigador cargados.', 'error')
+    return
+  }
+
+  this.syncing = true
+  this.addLog('Añadiendo autor desde ORCID...', 'info')
+
+  try {
+    const response = await api.fetchAuthorFromOrcid(this.researcher.orcid_id)
+
+    if (response.success) {
+      this.showMessage('Autor añadido exitosamente.', 'success')
+      this.addLog(`Autor creado/actualizado: ${response.author.first_name} ${response.author.last_name}`, 'success')
+      this.$emit('author-added', response.author)
+    } else {
+      this.showMessage(response.error || 'Error al añadir el autor.', 'error')
+      this.addLog('Error al añadir el autor.', 'error')
+    }
+  } catch (error) {
+    console.error('Error al añadir autor desde ORCID:', error)
+    this.showMessage(error.message || 'Error de conexión al añadir el autor.', 'error')
+    this.addLog('Error de conexión al añadir autor.', 'error')
+  } finally {
+    this.syncing = false
+  }
+},
 
     toggleWorkSelection(work) {
       const index = this.selectedWorks.findIndex(w => w.external_id === work.external_id)
@@ -856,6 +894,23 @@ export default {
 
 .log-item.info .log-message {
   color: #4a5568;
+}
+.action-btn.add-author-btn {
+  background-color: #2d9cdb;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.action-btn.add-author-btn:hover {
+  background-color: #238ac9;
+}
+.action-btn.add-author-btn:disabled {
+  background-color: #a0cfee;
+  cursor: not-allowed;
 }
 
 /* Responsive */

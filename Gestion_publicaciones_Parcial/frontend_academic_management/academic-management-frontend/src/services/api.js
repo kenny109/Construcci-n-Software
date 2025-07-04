@@ -403,6 +403,18 @@ this.baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
       throw new Error(error.message || 'Error al crear publicación individual desde ORCID')
     }
   }
+  async fetchAuthorFromOrcid(orcidId) {
+  const response = await fetch('/api/orcid/fetch-from-orcid', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify({ orcid_id: orcidId })
+  });
+  return await response.json();
+}
+
 }
 
 export default new ApiService()
