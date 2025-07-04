@@ -16,6 +16,19 @@ def create_journal():
         if field not in data:
             return jsonify({'error': f'Campo {field} es obligatorio'}), 400
     
+    # Limpiar campos UUID - convertir cadenas vacías a None
+    uuid_fields = ['country_id', 'id']  # Añade aquí otros campos UUID que tengas
+    for field in uuid_fields:
+        if field in data and data[field] == '':
+            data[field] = None
+    
+    # Opcional: También limpiar otros campos que pueden causar problemas
+    # Convertir cadenas vacías a None para campos que aceptan NULL
+    nullable_fields = ['issn', 'quartile', 'description', 'website']
+    for field in nullable_fields:
+        if field in data and data[field] == '':
+            data[field] = None
+    
     try:
         journal = Journal.create(**data)
         return jsonify({

@@ -619,24 +619,60 @@ export default {
     
     // ✅ MEJORADO: Validación ISSN duplicado
     async createJournal() {
-      if (!this.newJournal.name.trim()) return
-      
-      // Verificar ISSN duplicado
-      if (this.newJournal.issn && this.journals.find(j => j.issn === this.newJournal.issn)) {
-        this.error = 'Error: ISSN ya existe'
-        return
-      }
-      
-      try {
-        const response = await api.createItem('journals', this.newJournal)
-        this.journals.push(response.data || response)
-        this.form.journal_id = (response.data || response).id
-        this.newJournal = { name: '', issn: '', publisher: '', quartile: '', country_id: '' }
-        this.error = ''
-      } catch (error) {
-        this.error = 'Error creando revista: ' + error.message
-      }
-    },
+  // Validar campo obligatorio
+  if (!this.newJournal.name.trim()) {
+    this.error = 'El nombre de la revista es obligatorio'
+    return
+  }
+  
+  // Verificar ISSN duplicado (solo si se proporciona)
+  if (this.newJournal.issn && this.newJournal.issn.trim() && 
+      this.journals.find(j => j.issn === this.newJournal.issn.trim())) {
+    this.error = 'Error: ISSN ya existe'
+    return
+  }
+  
+  try {
+    // Limpiar datos antes de enviar (opcional, ya que el backend lo maneja)
+    const journalData = {
+      name: this.newJournal.name.trim(),
+      issn: this.newJournal.issn.trim() || '',
+      publisher: this.newJournal.publisher.trim() || '',
+      quartile: this.newJournal.quartile.trim() || '',
+      country_id: this.newJournal.country_id || ''
+    }
+    
+    const response = await api.createItem('journals', journalData)
+    const createdJournal = response.data || response
+    
+    // Agregar a la lista local
+    this.journals.push(createdJournal)
+    
+    // Actualizar formulario si existe
+    if (this.form) {
+      this.form.journal_id = createdJournal.id
+    }
+    
+    // Resetear formulario
+    this.newJournal = { 
+      name: '', 
+      issn: '', 
+      publisher: '', 
+      quartile: '', 
+      country_id: '' 
+    }
+    
+    // Limpiar errores
+    this.error = ''
+    
+    // Opcional: Mostrar mensaje de éxito
+    // this.success = 'Revista creada exitosamente'
+    
+  } catch (error) {
+    console.error('Error creating journal:', error)
+    this.error = 'Error creando revista: ' + (error.response?.data?.error || error.message)
+  }
+},
     
     async createConference() {
       if (!this.newConference.name.trim()) return
