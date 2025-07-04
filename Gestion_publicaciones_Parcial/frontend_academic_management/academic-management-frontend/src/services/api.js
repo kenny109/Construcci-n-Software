@@ -257,32 +257,152 @@ this.baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
   async deleteProject(id) {
     return this.deleteItem('projects', id)
   }
+  
   async addAuthorToPublication(publicationId, authorData) {
-  const response = await axios.post(`/publication-authors/${publicationId}/authors`, authorData)
-  return response.data
+    const response = await axios.post(`/publication-authors/${publicationId}/authors`, authorData)
+    return response.data
   }
 
-      // ORCID methods
+  // ORCID methods
   async checkOrcidService() {
-    return this.getItems('orcid')
+    try {
+      const response = await axios.get('/orcid/')
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al verificar el servicio ORCID')
+    }
   }
 
   async getOrcidResearcher(orcidId) {
-    const response = await axios.get(`/orcid/researcher/${orcidId}`)
-    return response.data
+    try {
+      const response = await axios.get(`/orcid/researcher/${orcidId}`)
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al obtener información del investigador')
+    }
   }
 
   async getOrcidWorks(orcidId) {
-    const response = await axios.get(`/orcid/researcher/${orcidId}/works`)
-    return response.data
+    try {
+      const response = await axios.get(`/orcid/researcher/${orcidId}/works`)
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al obtener las publicaciones del investigador')
+    }
   }
 
   async syncOrcidResearcher(orcidId) {
-    const response = await axios.post(`/orcid/sync/${orcidId}`)
-    return response.data
+    try {
+      const response = await axios.post(`/orcid/sync/${orcidId}`)
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al sincronizar datos del investigador')
+    }
   }
 
+  // Nuevas funciones añadidas desde orcid.py
+  
+  /**
+   * Crea una publicación en la base de datos a partir de datos de ORCID
+   * @param {Object} publicationData - Datos de la publicación
+   * @param {string} publicationData.title - Título de la publicación (obligatorio)
+   * @param {string} publicationData.type - Tipo de publicación
+   * @param {string} publicationData.journal - Nombre del journal
+   * @param {number} publicationData.year - Año de publicación
+   * @param {string} publicationData.external_id - ID externo
+   * @param {string} publicationData.doi - DOI de la publicación
+   * @param {string} publicationData.url - URL de la publicación
+   * @param {string} publicationData.abstract - Resumen de la publicación
+   * @param {string} publicationData.pdf_url - URL del PDF
+   * @param {number} publicationData.month - Mes de publicación
+   * @param {number} publicationData.day - Día de publicación
+   * @returns {Promise<Object>} - Respuesta con la publicación creada
+   */
+  async createPublicationFromOrcid(publicationData) {
+    try {
+      const response = await axios.post('/orcid/publications', publicationData)
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al crear publicación desde ORCID')
+    }
+  }
 
+  /**
+   * Crea múltiples publicaciones en lote desde datos de ORCID
+   * @param {Array} publicationsArray - Array de objetos con datos de publicaciones
+   * @returns {Promise<Object>} - Respuesta con las publicaciones creadas y errores
+   */
+  async createPublicationsBatch(publicationsArray) {
+    try {
+      const response = await axios.post('/orcid/publications/batch', {
+        publications: publicationsArray
+      })
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Error al crear publicaciones en lote')
+    }
+  }
+
+  /**
+   * Método auxiliar para importar publicaciones desde ORCID
+   * Este método combina la obtención de trabajos y la creación en lote
+   * @param {string} orcidId - ID de ORCID del investigador
+   * @returns {Promise<Object>} - Respuesta con el resultado de la importación
+   */
+  async importPublicationsFromOrcid(orcidId) {
+    try {
+      // Primero obtenemos los trabajos del investigador
+      const worksResponse = await this.getOrcidWorks(orcidId)
+      
+      if (!worksResponse.success || !worksResponse.data || worksResponse.data.length === 0) {
+        throw new Error('No se encontraron publicaciones para importar')
+      }
+
+      // Luego las creamos en lote
+      const batchResponse = await this.createPublicationsBatch(worksResponse.data)
+      
+      return {
+        success: true,
+        message: `Importación completada desde ORCID: ${orcidId}`,
+        totalWorks: worksResponse.count,
+        createdPublications: batchResponse.created?.length || 0,
+        errors: batchResponse.errors || [],
+        details: batchResponse
+      }
+    } catch (error) {
+      throw new Error(error.message || 'Error al importar publicaciones desde ORCID')
+    }
+  }
+
+  /**
+   * Método auxiliar para crear una publicación individual desde datos de ORCID
+   * con validación adicional
+   * @param {Object} orcidWorkData - Datos del trabajo desde ORCID
+   * @returns {Promise<Object>} - Respuesta con la publicación creada
+   */
+  async createSinglePublicationFromOrcid(orcidWorkData) {
+    try {
+      // Validación básica
+      if (!orcidWorkData.title) {
+        throw new Error('El título es obligatorio para crear una publicación')
+      }
+
+      // Preparar los datos para el backend
+      const publicationData = {
+        title: orcidWorkData.title,
+        type: orcidWorkData.type || 'journal-article',
+        journal: orcidWorkData.journal || '',
+        year: orcidWorkData.year,
+        external_id: orcidWorkData.external_id,
+        doi: orcidWorkData.doi,
+        url: orcidWorkData.url
+      }
+
+      return await this.createPublicationFromOrcid(publicationData)
+    } catch (error) {
+      throw new Error(error.message || 'Error al crear publicación individual desde ORCID')
+    }
+  }
 }
 
 export default new ApiService()

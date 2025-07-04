@@ -214,20 +214,20 @@ export default {
       try {
         this.addLog('Buscando información del investigador...', 'info')
         
-        // Llamar al endpoint correcto del backend
-        const response = await api.get(`/orcid/researcher/${this.orcidId}`)
+        // Usar el método correcto de la API
+        const response = await api.getOrcidResearcher(this.orcidId)
 
-        if (response.data.success) {
-          this.researcher = response.data.data
+        if (response.success) {
+          this.researcher = response.data
           this.showMessage('Información del investigador cargada exitosamente', 'success')
           this.addLog('Información del investigador obtenida correctamente', 'success')
         } else {
-          this.showMessage(response.data.message || 'No se pudo obtener la información del investigador', 'error')
+          this.showMessage(response.message || 'No se pudo obtener la información del investigador', 'error')
           this.addLog('Error al obtener información del investigador', 'error')
         }
       } catch (error) {
         console.error('Error al buscar investigador:', error)
-        this.showMessage('Error al buscar el investigador. Verifica el ORCID ID.', 'error')
+        this.showMessage(error.message || 'Error al buscar el investigador. Verifica el ORCID ID.', 'error')
         this.addLog('Error de conexión al buscar investigador', 'error')
       } finally {
         this.loading = false
@@ -244,20 +244,20 @@ export default {
       try {
         this.addLog('Cargando publicaciones del investigador...', 'info')
         
-        // Llamar al endpoint correcto del backend
-        const response = await api.get(`/orcid/researcher/${this.researcher.orcid_id}/works`)
+        // Usar el método correcto de la API
+        const response = await api.getOrcidWorks(this.researcher.orcid_id)
         
-        if (response.data.success) {
-          this.works = response.data.data
+        if (response.success) {
+          this.works = response.data
           this.showMessage(`${this.works.length} publicaciones encontradas`, 'success')
           this.addLog(`${this.works.length} publicaciones cargadas correctamente`, 'success')
         } else {
-          this.showMessage(response.data.message || 'No se pudieron cargar las publicaciones', 'error')
+          this.showMessage(response.message || 'No se pudieron cargar las publicaciones', 'error')
           this.addLog('Error al cargar publicaciones', 'error')
         }
       } catch (error) {
         console.error('Error al cargar publicaciones:', error)
-        this.showMessage('Error al cargar las publicaciones del investigador', 'error')
+        this.showMessage(error.message || 'Error al cargar las publicaciones del investigador', 'error')
         this.addLog('Error de conexión al cargar publicaciones', 'error')
       } finally {
         this.loadingWorks = false
@@ -271,27 +271,27 @@ export default {
       this.addLog('Iniciando sincronización completa...', 'info')
 
       try {
-        // Llamar al endpoint de sincronización
-        const response = await api.post(`/orcid/sync/${this.researcher.orcid_id}`)
+        // Usar el método correcto de la API
+        const response = await api.syncOrcidResearcher(this.researcher.orcid_id)
         
-        if (response.data.success) {
+        if (response.success) {
           this.showMessage('Datos del investigador sincronizados exitosamente', 'success')
-          this.addLog(`Sincronización completada: ${response.data.message}`, 'success')
+          this.addLog(`Sincronización completada: ${response.message}`, 'success')
           
           // Mostrar estadísticas si están disponibles
-          if (response.data.stats) {
-            const stats = response.data.stats
+          if (response.stats) {
+            const stats = response.stats
             this.addLog(`Estadísticas: ${stats.added} añadidas, ${stats.skipped} existentes, ${stats.failed} fallidas`, 'info')
           }
           
           this.$emit('researcher-synced', this.researcher)
         } else {
-          this.showMessage(response.data.message || 'Error al sincronizar los datos', 'error')
+          this.showMessage(response.message || 'Error al sincronizar los datos', 'error')
           this.addLog('Error en la sincronización', 'error')
         }
       } catch (error) {
         console.error('Error al sincronizar:', error)
-        this.showMessage('Error al sincronizar los datos del investigador', 'error')
+        this.showMessage(error.message || 'Error al sincronizar los datos del investigador', 'error')
         this.addLog('Error de conexión durante la sincronización', 'error')
       } finally {
         this.syncing = false
@@ -337,18 +337,19 @@ export default {
               external_id: work.external_id
             }
 
-            const response = await api.post('/orcid/publications', publicationData)
+            // Usar el método correcto de la API
+            const response = await api.createPublicationFromOrcid(publicationData)
             
-            if (response.data.success) {
+            if (response.success) {
               successful++
               this.addLog(`✅ Publicación añadida: ${work.title}`, 'success')
             } else {
               failed++
-              this.addLog(`❌ Error añadiendo: ${work.title}`, 'error')
+              this.addLog(`❌ Error añadiendo: ${work.title} - ${response.error}`, 'error')
             }
           } catch (error) {
             failed++
-            this.addLog(`❌ Error añadiendo: ${work.title}`, 'error')
+            this.addLog(`❌ Error añadiendo: ${work.title} - ${error.message}`, 'error')
           }
         }
 
@@ -386,13 +387,12 @@ export default {
           external_id: work.external_id
         }))
 
-        const response = await api.post('/orcid/publications/batch', {
-          publications: publicationsData
-        })
+        // Usar el método correcto de la API
+        const response = await api.createPublicationsBatch(publicationsData)
         
-        if (response.data.success) {
-          const created = response.data.created || []
-          const errors = response.data.errors || []
+        if (response.success) {
+          const created = response.created || []
+          const errors = response.errors || []
           
           this.showMessage(`${created.length} publicaciones añadidas en lote`, 'success')
           this.addLog(`Lote completado: ${created.length} exitosas, ${errors.length} fallidas`, 'success')
@@ -407,13 +407,52 @@ export default {
             this.$emit('publications-added', created.length)
           }
         } else {
-          this.showMessage(response.data.message || 'Error al añadir publicaciones en lote', 'error')
+          this.showMessage(response.message || 'Error al añadir publicaciones en lote', 'error')
           this.addLog('Error en el proceso de lote', 'error')
         }
       } catch (error) {
         console.error('Error en lote:', error)
-        this.showMessage('Error al añadir publicaciones en lote', 'error')
+        this.showMessage(error.message || 'Error al añadir publicaciones en lote', 'error')
         this.addLog('Error de conexión en el proceso de lote', 'error')
+      } finally {
+        this.addingBatch = false
+      }
+    },
+
+    // Método adicional para usar la función auxiliar de importación completa
+    async importAllPublications() {
+      if (!this.researcher) return
+
+      this.addingBatch = true
+      this.addLog('Iniciando importación completa desde ORCID...', 'info')
+
+      try {
+        // Usar el método auxiliar que combina obtener trabajos y crear en lote
+        const response = await api.importPublicationsFromOrcid(this.researcher.orcid_id)
+        
+        if (response.success) {
+          this.showMessage(response.message, 'success')
+          this.addLog(`Importación completada: ${response.createdPublications} publicaciones creadas de ${response.totalWorks} encontradas`, 'success')
+          
+          // Mostrar errores si los hay
+          if (response.errors && response.errors.length > 0) {
+            response.errors.forEach(error => {
+              this.addLog(`❌ ${error}`, 'error')
+            })
+          }
+          
+          this.$emit('publications-imported', response.createdPublications)
+          
+          // Recargar las publicaciones disponibles
+          await this.loadWorks()
+        } else {
+          this.showMessage(response.message || 'Error al importar publicaciones', 'error')
+          this.addLog('Error en la importación completa', 'error')
+        }
+      } catch (error) {
+        console.error('Error en importación:', error)
+        this.showMessage(error.message || 'Error al importar publicaciones desde ORCID', 'error')
+        this.addLog('Error de conexión en la importación', 'error')
       } finally {
         this.addingBatch = false
       }
