@@ -428,5 +428,6 @@ async getPublicationsCount() {
   }
 }
 
+}
 
 export default new ApiService()
