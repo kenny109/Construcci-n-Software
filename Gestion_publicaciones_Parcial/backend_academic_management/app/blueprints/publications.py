@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
-from app.models import Publication, PublicationAuthor, PublicationKeyword, Author, Keyword
+from app.models import Publication, PublicationAuthor, PublicationKeyword, Author, Keyword, PublicationType
 from app.extensions import db
 import uuid
 
@@ -98,7 +98,7 @@ def create_publication():
         print(f"Traceback: {traceback.format_exc()}")
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-        
+
 @bp.route('/', methods=['GET'])
 @jwt_required()
 def get_publications():
