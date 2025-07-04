@@ -4,6 +4,7 @@ from datetime import timedelta
 
 load_dotenv()
 
+
 class Config:
     # Leer si está en Railway (true o false)
     IS_RAILWAY = os.getenv('IS_RAILWAY', 'false').lower() == 'true'
