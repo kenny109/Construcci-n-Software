@@ -270,7 +270,7 @@ export default {
   this.adding = true;
 
   try {
-    const promises = this.selectedWorks.map(work => {
+    const promises = this.selectedWorks.map(async work => {
       const publicationData = {
         title: work.title,
         type: work.type,
@@ -279,18 +279,24 @@ export default {
         doi: work.doi,
         url: work.url,
         external_id: work.external_id,
-        source: 'ORCID',
-        // Añadir el autor con su ORCID ID
-        authors: [{
-          orcid_id: this.researcher.orcid_id,
-          is_corresponding: true, // o false según corresponda
-          author_order: 1
-        }]
+        source: 'ORCID'
       };
 
       console.log('Publicación a enviar:', publicationData);
 
-      return api.createItem('publications', publicationData);
+      try {
+        const response = await api.createItem('publications', publicationData);
+        return response;
+      } catch (error) {
+        console.error('Error detallado:', error);
+        console.error('Error response:', error.response);
+        if (error.response) {
+          console.error('Error status:', error.response.status);
+          console.error('Error data:', error.response.data);
+          console.error('Error headers:', error.response.headers);
+        }
+        throw error;
+      }
     });
 
     await Promise.all(promises);
@@ -300,8 +306,13 @@ export default {
     this.$emit('publications-added', this.selectedWorks.length);
     
   } catch (error) {
-    console.error('Error al añadir publicaciones:', error);
-    this.showMessage('Error al añadir algunas publicaciones', 'error');
+    console.error('Error general al añadir publicaciones:', error);
+    if (error.response && error.response.data) {
+      console.error('Detalles del error del servidor:', error.response.data);
+      this.showMessage(`Error: ${error.response.data.error || 'Error desconocido'}`, 'error');
+    } else {
+      this.showMessage('Error al añadir algunas publicaciones', 'error');
+    }
   } finally {
     this.adding = false;
   }

@@ -6,80 +6,77 @@ import uuid
 
 bp = Blueprint('publications', __name__)
 
+import logging
+import traceback
+
 @bp.route('/', methods=['POST'])
 @jwt_required()
 def create_publication():
-    data = request.get_json()
-
-    # Verificar campo obligatorio de título
-    if 'title' not in data:
-        return jsonify({'error': 'Campo title es obligatorio'}), 400
-
-    # Validar o crear PublicationType dinámicamente
-    publication_type_id = data.get('publication_type_id')
-    publication_type_obj = None
-
-    if not publication_type_id:
-        type_name = data.get('type')
-        if not type_name:
-            return jsonify({'error': 'Debe proporcionar publication_type_id o type'}), 400
-
-        publication_type_obj = PublicationType.query.filter_by(name=type_name).first()
-        if not publication_type_obj:
-            publication_type_obj = PublicationType(
-                name=type_name,
-                description=f'Tipo de publicación importado automáticamente: {type_name}'
-            )
-            db.session.add(publication_type_obj)
-            db.session.flush()
-
-        publication_type_id = publication_type_obj.id
-
-    # Asegurar que el campo se use como ID
-    data['publication_type_id'] = publication_type_id
-    data.pop('type', None)
-
     try:
+        data = request.get_json()
+        
+        # Log para debug
+        print("=== INICIO CREATE PUBLICATION ===")
+        print(f"Datos recibidos: {data}")
+        
+        # Verificar campo obligatorio de título
+        if 'title' not in data:
+            print("ERROR: Campo title faltante")
+            return jsonify({'error': 'Campo title es obligatorio'}), 400
+
+        # Validar o crear PublicationType dinámicamente
+        publication_type_id = data.get('publication_type_id')
+        publication_type_obj = None
+
+        if not publication_type_id:
+            type_name = data.get('type')
+            print(f"Procesando tipo: {type_name}")
+            
+            if not type_name:
+                print("ERROR: Falta publication_type_id o type")
+                return jsonify({'error': 'Debe proporcionar publication_type_id o type'}), 400
+
+            publication_type_obj = PublicationType.query.filter_by(name=type_name).first()
+            if not publication_type_obj:
+                print(f"Creando nuevo tipo: {type_name}")
+                publication_type_obj = PublicationType(
+                    name=type_name,
+                    description=f'Tipo de publicación importado automáticamente: {type_name}'
+                )
+                db.session.add(publication_type_obj)
+                db.session.flush()
+
+            publication_type_id = publication_type_obj.id
+
+        # Asegurar que el campo se use como ID
+        data['publication_type_id'] = publication_type_id
+        data.pop('type', None)
+
+        print(f"Datos finales para crear: {data}")
+
         # Crear la publicación
         publication = Publication.create(**{
             k: v for k, v in data.items()
             if k not in ['authors', 'keywords']
         })
 
-        # Procesar autores
+        print(f"Publicación creada con ID: {publication.id}")
+
+        # Procesar autores si se proporcionan
         if 'authors' in data and isinstance(data['authors'], list):
+            print(f"Procesando {len(data['authors'])} autores")
             for idx, author_data in enumerate(data['authors']):
-                author = None
-                
-                # Si viene author_id, usarlo directamente
                 if isinstance(author_data, dict) and 'author_id' in author_data:
-                    author_id = uuid.UUID(author_data['author_id'])
-                    author = Author.query.get(author_id)
-                
-                # Si viene orcid_id, buscar o crear autor
-                elif isinstance(author_data, dict) and 'orcid_id' in author_data:
-                    orcid_id = author_data['orcid_id']
-                    author = Author.query.filter_by(orcid_id=orcid_id).first()
-                    
-                    if not author:
-                        # Crear autor si no existe
-                        author = Author.create(
-                            orcid_id=orcid_id,
-                            # Añadir otros campos si los tienes disponibles
-                            #name=author_data.get('name', ''),
-                            #email=author_data.get('email', ''),
-                        )
-                
-                if author:
                     PublicationAuthor.create(
                         publication_id=publication.id,
-                        author_id=author.id,
+                        author_id=uuid.UUID(author_data['author_id']),
                         is_corresponding=author_data.get('is_corresponding', False),
                         author_order=author_data.get('author_order', idx + 1)
                     )
 
         # Procesar keywords si se proporcionan
         if 'keywords' in data and isinstance(data['keywords'], list):
+            print(f"Procesando {len(data['keywords'])} keywords")
             for keyword_id in data['keywords']:
                 PublicationKeyword.create(
                     publication_id=publication.id,
@@ -87,6 +84,7 @@ def create_publication():
                 )
 
         db.session.commit()
+        print("=== PUBLICACIÓN CREADA EXITOSAMENTE ===")
 
         return jsonify({
             'message': 'Publicación creada exitosamente',
@@ -94,15 +92,13 @@ def create_publication():
         }), 201
         
     except Exception as e:
-        print(f"=== ERROR DETALLADO ===")
+        print("=== ERROR EN CREATE PUBLICATION ===")
         print(f"Error: {str(e)}")
-        print(f"Tipo de error: {type(e)}")
-        import traceback
+        print(f"Tipo: {type(e)}")
         print(f"Traceback: {traceback.format_exc()}")
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-
-
+        
 @bp.route('/', methods=['GET'])
 @jwt_required()
 def get_publications():
