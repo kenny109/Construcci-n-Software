@@ -462,7 +462,7 @@ export default {
       keywords: [],
       countries: [],
       totalPages: 1,
-      currentPage: 1
+      currentPage: 1, 
       selectedAuthors: [],
       selectedKeywords: [],
       selectedKeywordId: '',
