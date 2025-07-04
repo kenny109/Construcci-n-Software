@@ -48,17 +48,45 @@ def create_publication():
 
             publication_type_id = publication_type_obj.id
 
-        # Asegurar que el campo se use como ID
-        data['publication_type_id'] = publication_type_id
-        data.pop('type', None)
+        # Limpiar y validar datos para Publication
+        publication_data = {}
+        
+        # Campos permitidos y sus tipos esperados
+        allowed_fields = {
+            'title': str,
+            'year': int,
+            'journal': str,
+            'doi': str,
+            'url': str,
+            'external_id': str,
+            'source': str,
+            'publication_type_id': int
+        }
+        
+        # Procesar cada campo
+        for field, expected_type in allowed_fields.items():
+            if field in data and data[field] is not None:
+                try:
+                    if expected_type == int:
+                        publication_data[field] = int(data[field])
+                    elif expected_type == str:
+                        publication_data[field] = str(data[field])
+                    else:
+                        publication_data[field] = data[field]
+                except (ValueError, TypeError) as e:
+                    print(f"Error convirtiendo {field}: {e}")
+                    continue
+        
+        # Agregar publication_type_id
+        publication_data['publication_type_id'] = publication_type_id
+        
+        print(f"Datos limpiados para crear: {publication_data}")
+        print(f"Tipos de datos: {[(k, type(v)) for k, v in publication_data.items()]}")
 
-        print(f"Datos finales para crear: {data}")
-
-        # Crear la publicación
-        publication = Publication.create(**{
-            k: v for k, v in data.items()
-            if k not in ['authors', 'keywords']
-        })
+        # Crear la publicación usando el constructor directo
+        publication = Publication(**publication_data)
+        db.session.add(publication)
+        db.session.flush()  # Para obtener el ID
 
         print(f"Publicación creada con ID: {publication.id}")
 
@@ -67,21 +95,23 @@ def create_publication():
             print(f"Procesando {len(data['authors'])} autores")
             for idx, author_data in enumerate(data['authors']):
                 if isinstance(author_data, dict) and 'author_id' in author_data:
-                    PublicationAuthor.create(
+                    publication_author = PublicationAuthor(
                         publication_id=publication.id,
                         author_id=uuid.UUID(author_data['author_id']),
                         is_corresponding=author_data.get('is_corresponding', False),
                         author_order=author_data.get('author_order', idx + 1)
                     )
+                    db.session.add(publication_author)
 
         # Procesar keywords si se proporcionan
         if 'keywords' in data and isinstance(data['keywords'], list):
             print(f"Procesando {len(data['keywords'])} keywords")
             for keyword_id in data['keywords']:
-                PublicationKeyword.create(
+                publication_keyword = PublicationKeyword(
                     publication_id=publication.id,
                     keyword_id=uuid.UUID(keyword_id)
                 )
+                db.session.add(publication_keyword)
 
         db.session.commit()
         print("=== PUBLICACIÓN CREADA EXITOSAMENTE ===")
@@ -98,7 +128,6 @@ def create_publication():
         print(f"Traceback: {traceback.format_exc()}")
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-
 @bp.route('/', methods=['GET'])
 @jwt_required()
 def get_publications():
