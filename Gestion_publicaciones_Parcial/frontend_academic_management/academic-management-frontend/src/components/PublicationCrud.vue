@@ -1447,6 +1447,7 @@ export default {
 }
 
 
+
 .pagination-btn:disabled {
   background-color: #aaa;
   cursor: not-allowed;
