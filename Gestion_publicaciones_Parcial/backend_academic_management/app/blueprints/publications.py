@@ -5,6 +5,11 @@ from app.extensions import db
 import uuid
 
 bp = Blueprint('publications', __name__)
+@bp.route('/count', methods=['GET'])
+@jwt_required()
+def count_publications():
+    total = Publication.query.filter_by(is_active=True).count()
+    return jsonify({'total': total})
 
 @bp.route('/', methods=['POST'])
 @jwt_required()

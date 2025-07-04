@@ -193,24 +193,28 @@ export default {
     },
     
     async loadStats() {
-      try {
-        const [publications, countries, keywords, publicationTypes] = await Promise.all([
-          api.getItems('publications').catch(() => ({ data: [] })),
-          api.getCountries().catch(() => ({ data: [] })),
-          api.getKeywords().catch(() => ({ data: [] })),
-          api.getPublicationTypes().catch(() => ({ data: [] }))
-        ])
-        
-        this.stats = {
-          publications: publications.data?.length || 0,
-          countries: countries.data?.length || 0,
-          keywords: keywords.data?.length || 0,
-          publicationTypes: publicationTypes.data?.length || 0
-        }
-      } catch (error) {
-        console.error('Error cargando estadísticas:', error)
-      }
-    },
+  try {
+    const [publicationsCount, authors, keywords, countries, publicationTypes] = await Promise.all([
+      api.getItems('publications/count').catch(() => ({ data: { total: 0 } })),
+      api.getItems('authors').catch(() => ({ data: [] })),
+      api.getKeywords().catch(() => ({ data: [] })),
+      api.getCountries().catch(() => ({ data: [] })),
+      api.getPublicationTypes().catch(() => ({ data: [] }))
+    ]);
+
+    this.stats = {
+      publications: publicationsCount.data?.total || 0,
+      authors: authors.data?.length || 0,
+      keywords: keywords.data?.length || 0,
+      countries: countries.data?.length || 0,
+      publicationTypes: publicationTypes.data?.length || 0
+    };
+  } catch (error) {
+    console.error('Error cargando estadísticas:', error);
+  }
+}
+
+,
     
     async loadRecentActivity() {
       try {

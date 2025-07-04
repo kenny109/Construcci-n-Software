@@ -64,7 +64,6 @@
   </span>
   <span v-else>No hay autores</span>
 </p>
-
         </div>
         
         <div v-if="publication.abstract" class="publication-abstract">
@@ -73,6 +72,27 @@
         </div>
       </div>
     </div>
+<div class="pagination-container" v-if="totalPages > 1">
+  <button 
+    @click="loadData(currentPage - 1)"
+    :disabled="currentPage === 1"
+    class="pagination-btn"
+  >
+    ⬅️ Anterior
+  </button>
+
+  <span class="pagination-info">
+    Página {{ currentPage }} de {{ totalPages }}
+  </span>
+
+  <button 
+    @click="loadData(currentPage + 1)"
+    :disabled="currentPage === totalPages"
+    class="pagination-btn"
+  >
+    Siguiente ➡️
+  </button>
+</div>
 
     <!-- ✅ NUEVO: Mensaje cuando no hay resultados -->
     <div v-if="filteredPublications.length === 0 && !loading" class="no-results">
@@ -441,7 +461,8 @@ export default {
       authors: [],
       keywords: [],
       countries: [],
-      
+      totalPages: 1,
+      currentPage: 1
       selectedAuthors: [],
       selectedKeywords: [],
       selectedKeywordId: '',
@@ -532,33 +553,45 @@ export default {
   },
   
   methods: {
-    async loadData() {
-      this.loading = true
-      try {
-        const [publications, publicationTypes, journals, conferences, authors, keywords, countries] = await Promise.all([
-          api.getItems('publications'),
-          api.getItems('publication-types'),
-          api.getItems('journals'),
-          api.getItems('conferences'),
-          api.getItems('authors'),
-          api.getItems('keywords'),
-          api.getItems('countries')
-        ])
-        
-        this.publications = publications.data || publications
-        this.publicationTypes = publicationTypes.data || publicationTypes
-        this.journals = journals.data || journals
-        this.conferences = conferences.data || conferences
-        this.authors = authors.data || authors
-        this.keywords = keywords.data || keywords
-        this.countries = countries.data || countries
-        
-      } catch (error) {
-        this.error = 'Error cargando datos: ' + error.message
-      } finally {
-        this.loading = false
-      }
-    },
+    async loadData(page = 1) {
+  this.loading = true;
+  try {
+    const [
+      publicationsResponse,
+      publicationTypes,
+      journals,
+      conferences,
+      authors,
+      keywords,
+      countries
+    ] = await Promise.all([
+      api.getItems('publications', { page, per_page: 10 }),
+      api.getItems('publication-types'),
+      api.getItems('journals'),
+      api.getItems('conferences'),
+      api.getItems('authors'),
+      api.getItems('keywords'),
+      api.getItems('countries')
+    ]);
+
+    this.publications = publicationsResponse.data || [];
+    this.totalPages = publicationsResponse.pages || 1;
+    this.currentPage = publicationsResponse.current_page || 1;
+
+    this.publicationTypes = publicationTypes.data || publicationTypes;
+    this.journals = journals.data || journals;
+    this.conferences = conferences.data || conferences;
+    this.authors = authors.data || authors;
+    this.keywords = keywords.data || keywords;
+    this.countries = countries.data || countries;
+
+  } catch (error) {
+    this.error = 'Error cargando datos: ' + error.message;
+  } finally {
+    this.loading = false;
+  }
+}
+,
     
     // ✅ MEJORADO: Validación de duplicados
     async createPublicationType() {
@@ -1393,6 +1426,37 @@ export default {
   display: inline-block;
   min-width: 100px;
   font-weight: 600;
+  color: #333;
+}
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.pagination-btn {
+  padding: 0.4rem 1rem;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pagination-btn:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #357ab8;
+}
+
+.pagination-info {
+  font-weight: bold;
   color: #333;
 }
 
