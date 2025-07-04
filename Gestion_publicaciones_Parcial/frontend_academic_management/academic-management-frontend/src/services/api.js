@@ -417,7 +417,7 @@ class ApiService {
 
 async getPublicationsCount() {
   try {
-    const response = await axios.get('/api/publications/count', {
+    const response = await axios.get('/publications/count', {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`
       }
@@ -428,6 +428,5 @@ async getPublicationsCount() {
   }
 }
 
-}
 
 export default new ApiService()
