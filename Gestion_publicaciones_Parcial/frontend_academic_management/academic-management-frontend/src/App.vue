@@ -122,6 +122,7 @@ export default {
       isAuthenticated: false,
       currentUser: null,
       activeTab: 'publications',
+      publicationsCount: 0,
       stats: {
         publications: 0,
         authors: 0,
@@ -194,8 +195,14 @@ export default {
     
     async loadStats() {
   try {
-    const [publicationsCount, authors, keywords, countries, publicationTypes] = await Promise.all([
-      api.getItems('publications/count').catch(() => ({ data: { total: 0 } })),
+    const [
+      publicationsCount,
+      authors,
+      keywords,
+      countries,
+      publicationTypes
+    ] = await Promise.all([
+      api.getPublicationsCount().catch(() => ({ total: 0 })),
       api.getItems('authors').catch(() => ({ data: [] })),
       api.getKeywords().catch(() => ({ data: [] })),
       api.getCountries().catch(() => ({ data: [] })),
@@ -203,7 +210,7 @@ export default {
     ]);
 
     this.stats = {
-      publications: publicationsCount.data?.total || 0,
+      publications: publicationsCount.total || 0,
       authors: authors.data?.length || 0,
       keywords: keywords.data?.length || 0,
       countries: countries.data?.length || 0,
@@ -213,6 +220,7 @@ export default {
     console.error('Error cargando estadísticas:', error);
   }
 }
+
 
 ,
     

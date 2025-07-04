@@ -415,6 +415,18 @@ class ApiService {
   return await response.json();
 }
 
+async getPublicationsCount() {
+  try {
+    const response = await axios.get('/api/publications/count', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Error al obtener el conteo de publicaciones');
+  }
+}
 
 }
 
