@@ -6,6 +6,7 @@ from app.models import Publication, PublicationType, Journal, Conference, Countr
 from app.extensions import db
 from datetime import datetime, date
 import traceback
+import requests
 
 bp = Blueprint('orcid', __name__)
 
