@@ -15,30 +15,23 @@ def create_publication():
     try:
         data = request.get_json()
         
-        # Log para debug
         print("=== INICIO CREATE PUBLICATION ===")
         print(f"Datos recibidos: {data}")
         
         # Verificar campo obligatorio de título
         if 'title' not in data:
-            print("ERROR: Campo title faltante")
             return jsonify({'error': 'Campo title es obligatorio'}), 400
 
         # Validar o crear PublicationType dinámicamente
         publication_type_id = data.get('publication_type_id')
-        publication_type_obj = None
-
+        
         if not publication_type_id:
             type_name = data.get('type')
-            print(f"Procesando tipo: {type_name}")
-            
             if not type_name:
-                print("ERROR: Falta publication_type_id o type")
                 return jsonify({'error': 'Debe proporcionar publication_type_id o type'}), 400
 
             publication_type_obj = PublicationType.query.filter_by(name=type_name).first()
             if not publication_type_obj:
-                print(f"Creando nuevo tipo: {type_name}")
                 publication_type_obj = PublicationType(
                     name=type_name,
                     description=f'Tipo de publicación importado automáticamente: {type_name}'
@@ -60,7 +53,6 @@ def create_publication():
             'url': str,
             'external_id': str,
             'source': str,
-            'publication_type_id': int
         }
         
         # Procesar cada campo
@@ -77,16 +69,19 @@ def create_publication():
                     print(f"Error convirtiendo {field}: {e}")
                     continue
         
-        # Agregar publication_type_id
-        publication_data['publication_type_id'] = publication_type_id
+        # Agregar publication_type_id - CONVERTIR A STRING SI ES UUID
+        if isinstance(publication_type_id, uuid.UUID):
+            publication_data['publication_type_id'] = str(publication_type_id)
+        else:
+            publication_data['publication_type_id'] = publication_type_id
         
         print(f"Datos limpiados para crear: {publication_data}")
         print(f"Tipos de datos: {[(k, type(v)) for k, v in publication_data.items()]}")
 
-        # Crear la publicación usando el constructor directo
+        # Crear la publicación
         publication = Publication(**publication_data)
         db.session.add(publication)
-        db.session.flush()  # Para obtener el ID
+        db.session.flush()
 
         print(f"Publicación creada con ID: {publication.id}")
 
@@ -116,9 +111,22 @@ def create_publication():
         db.session.commit()
         print("=== PUBLICACIÓN CREADA EXITOSAMENTE ===")
 
+        # Crear respuesta manual para evitar problemas con to_dict()
+        response_data = {
+            'id': str(publication.id) if hasattr(publication, 'id') else None,
+            'title': publication.title,
+            'publication_type_id': publication.publication_type_id,
+            'year': publication.year,
+            'journal': publication.journal,
+            'doi': publication.doi,
+            'url': publication.url,
+            'external_id': publication.external_id,
+            'source': publication.source
+        }
+
         return jsonify({
             'message': 'Publicación creada exitosamente',
-            'data': publication.to_dict()
+            'data': response_data
         }), 201
         
     except Exception as e:
