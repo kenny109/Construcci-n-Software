@@ -1446,6 +1446,7 @@ export default {
   transition: background 0.2s;
 }
 
+
 .pagination-btn:disabled {
   background-color: #aaa;
   cursor: not-allowed;
