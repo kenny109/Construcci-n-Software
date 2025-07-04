@@ -189,15 +189,16 @@ class OrcidService:
     def _extract_email(person):
         """Extrae el email de los datos de persona de ORCID"""
         if not person:
-            return ''
+            return None
             
         emails = person.get('emails', {}) or {}
         email_list = emails.get('email', []) or []
         
         if email_list and len(email_list) > 0:
             email_obj = email_list[0] or {}
-            return email_obj.get('email', '')
-        return ''
+            return email_obj.get('email') or None
+        return None
+
     
     @staticmethod
     def _extract_affiliation(person):
