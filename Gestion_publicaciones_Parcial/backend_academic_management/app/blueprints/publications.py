@@ -1,141 +1,56 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
-from app.models import Publication, PublicationAuthor, PublicationKeyword, Author, Keyword, PublicationType
+from app.models import Publication, PublicationAuthor, PublicationKeyword, Author, Keyword
 from app.extensions import db
 import uuid
 
 bp = Blueprint('publications', __name__)
 
-import logging
-import traceback
-
 @bp.route('/', methods=['POST'])
 @jwt_required()
 def create_publication():
+    data = request.get_json()
+    
+    # Verificar campos obligatorios
+    required_fields = ['title', 'publication_type_id']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'error': f'Campo {field} es obligatorio'}), 400
+    
     try:
-        data = request.get_json()
+        # Crear la publicación, incluyendo el campo external_id si se proporciona
+        publication = Publication.create(**{
+            k: v for k, v in data.items() 
+            if k not in ['authors', 'keywords']
+        })
         
-        print("=== INICIO CREATE PUBLICATION ===")
-        print(f"Datos recibidos: {data}")
-        
-        # Verificar campo obligatorio de título
-        if 'title' not in data:
-            return jsonify({'error': 'Campo title es obligatorio'}), 400
-
-        # Validar o crear PublicationType dinámicamente
-        publication_type_id = data.get('publication_type_id')
-        
-        if not publication_type_id:
-            type_name = data.get('type')
-            if not type_name:
-                return jsonify({'error': 'Debe proporcionar publication_type_id o type'}), 400
-
-            publication_type_obj = PublicationType.query.filter_by(name=type_name).first()
-            if not publication_type_obj:
-                publication_type_obj = PublicationType(
-                    name=type_name,
-                    description=f'Tipo de publicación importado automáticamente: {type_name}'
-                )
-                db.session.add(publication_type_obj)
-                db.session.flush()
-
-            publication_type_id = publication_type_obj.id
-
-        # Limpiar y validar datos para Publication
-        publication_data = {}
-        
-        # Campos permitidos y sus tipos esperados
-        allowed_fields = {
-            'title': str,
-            'year': int,
-            'journal': str,
-            'doi': str,
-            'url': str,
-            'external_id': str,
-            'source': str,
-        }
-        
-        # Procesar cada campo
-        for field, expected_type in allowed_fields.items():
-            if field in data and data[field] is not None:
-                try:
-                    if expected_type == int:
-                        publication_data[field] = int(data[field])
-                    elif expected_type == str:
-                        publication_data[field] = str(data[field])
-                    else:
-                        publication_data[field] = data[field]
-                except (ValueError, TypeError) as e:
-                    print(f"Error convirtiendo {field}: {e}")
-                    continue
-        
-        # Agregar publication_type_id - CONVERTIR A STRING SI ES UUID
-        if isinstance(publication_type_id, uuid.UUID):
-            publication_data['publication_type_id'] = str(publication_type_id)
-        else:
-            publication_data['publication_type_id'] = publication_type_id
-        
-        print(f"Datos limpiados para crear: {publication_data}")
-        print(f"Tipos de datos: {[(k, type(v)) for k, v in publication_data.items()]}")
-
-        # Crear la publicación
-        publication = Publication(**publication_data)
-        db.session.add(publication)
-        db.session.flush()
-
-        print(f"Publicación creada con ID: {publication.id}")
-
         # Procesar autores si se proporcionan
         if 'authors' in data and isinstance(data['authors'], list):
-            print(f"Procesando {len(data['authors'])} autores")
             for idx, author_data in enumerate(data['authors']):
                 if isinstance(author_data, dict) and 'author_id' in author_data:
-                    publication_author = PublicationAuthor(
+                    PublicationAuthor.create(
                         publication_id=publication.id,
                         author_id=uuid.UUID(author_data['author_id']),
                         is_corresponding=author_data.get('is_corresponding', False),
                         author_order=author_data.get('author_order', idx + 1)
                     )
-                    db.session.add(publication_author)
-
+        
         # Procesar keywords si se proporcionan
         if 'keywords' in data and isinstance(data['keywords'], list):
-            print(f"Procesando {len(data['keywords'])} keywords")
             for keyword_id in data['keywords']:
-                publication_keyword = PublicationKeyword(
+                PublicationKeyword.create(
                     publication_id=publication.id,
                     keyword_id=uuid.UUID(keyword_id)
                 )
-                db.session.add(publication_keyword)
-
-        db.session.commit()
-        print("=== PUBLICACIÓN CREADA EXITOSAMENTE ===")
-
-        # Crear respuesta manual para evitar problemas con to_dict()
-        response_data = {
-            'id': str(publication.id) if hasattr(publication, 'id') else None,
-            'title': publication.title,
-            'publication_type_id': publication.publication_type_id,
-            'year': publication.year,
-            'journal': publication.journal,
-            'doi': publication.doi,
-            'url': publication.url,
-            'external_id': publication.external_id,
-            'source': publication.source
-        }
-
+        
         return jsonify({
             'message': 'Publicación creada exitosamente',
-            'data': response_data
+            'data': publication.to_dict()
         }), 201
-        
     except Exception as e:
-        print("=== ERROR EN CREATE PUBLICATION ===")
-        print(f"Error: {str(e)}")
-        print(f"Tipo: {type(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 400
+
 @bp.route('/', methods=['GET'])
 @jwt_required()
 def get_publications():
